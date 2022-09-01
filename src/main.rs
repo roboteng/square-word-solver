@@ -9,14 +9,18 @@ fn main() {
         Err(err) => panic!("Couldn't open {:?} because {}", path, err),
     };
 
-    let reg = Regex::new("^[a-z]{5}$").unwrap();
-    let mut string = Box::new(String::new());
+    let mut string = String::new();
     file.read_to_string(&mut string).unwrap();
-    let words: Vec<&str> = string.split('\n').collect();
-    let valid_words: Vec<&str> = words
-        .into_iter()
-        .filter(|word| -> bool { reg.is_match(word) })
-        .collect();
+    let valid_words = five_letter_words(&string);
 
     println!("{:?}", valid_words);
+}
+
+fn five_letter_words(string: &str) -> Vec<&str> {
+    let reg = Regex::new("^[a-z]{5}$").unwrap();
+    let words = string.split('\n');
+    words
+        .into_iter()
+        .filter(|word| -> bool { reg.is_match(word) })
+        .collect()
 }
