@@ -1,5 +1,24 @@
+use std::fmt::Display;
+
 pub struct WordGrid {
     words: [[Option<char>; 5]; 5],
+}
+
+impl Display for WordGrid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.words.into_iter().for_each(|word| {
+            let mut s = String::new();
+            word.into_iter().for_each(|letter| {
+                s.push(match letter {
+                    Some(l) => l,
+                    None => '-',
+                })
+            });
+            writeln!(f, "{}", s).unwrap();
+        });
+
+        Ok(())
+    }
 }
 
 impl WordGrid {
@@ -18,8 +37,20 @@ impl WordGrid {
     pub fn place_row(&mut self, row_index: usize, word: &str) -> Result<(), ()> {
         if self.can_place_row(row_index, word) {
             let letters = word.as_bytes();
-            for i in 0..4 {
+            for i in 0..5 {
                 self.words[row_index][i] = Some(letters[i].into())
+            }
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
+    pub fn place_col(&mut self, col_index: usize, word: &str) -> Result<(), ()> {
+        if self.can_place_col(col_index, word) {
+            let letters = word.as_bytes();
+            for i in 0..5 {
+                self.words[i][col_index] = Some(letters[i].into())
             }
             Ok(())
         } else {
@@ -29,8 +60,20 @@ impl WordGrid {
 
     pub fn can_place_row(&self, row_index: usize, word: &str) -> bool {
         let letters = word.as_bytes();
-        for i in 0..4 {
+        for i in 0..5 {
             if let Some(char) = self.words[row_index][i] {
+                if char != letters[i].into() {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    pub fn can_place_col(&self, col_index: usize, word: &str) -> bool {
+        let letters = word.as_bytes();
+        for i in 0..5 {
+            if let Some(char) = self.words[i][col_index] {
                 if char != letters[i].into() {
                     return false;
                 }
@@ -58,9 +101,37 @@ mod tests {
     }
 
     #[test]
-    fn can_place_same_word_on_same_spot() {
+    fn can_place_same_word_on_same_row() {
         let mut grid = WordGrid::new();
         grid.place_row(0, "hello").unwrap();
         assert!(grid.can_place_row(0, "hello"));
+    }
+
+    #[test]
+    fn can_place_word_on_col() {
+        let mut grid = WordGrid::new();
+        grid.place_row(0, "hello").unwrap();
+        assert!(grid.can_place_col(0, "hanoi"));
+    }
+
+    #[test]
+    fn cant_place_word_on_col() {
+        let mut grid = WordGrid::new();
+        grid.place_row(0, "hello").unwrap();
+        assert!(!grid.can_place_col(0, "other"));
+    }
+
+    #[test]
+    fn cant_place_word_on_last_col() {
+        let mut grid = WordGrid::new();
+        grid.place_row(0, "hello").unwrap();
+        assert!(!grid.can_place_col(4, "stahp"));
+    }
+
+    #[test]
+    fn cant_place_different_words_on_same_col() {
+        let mut grid = WordGrid::new();
+        grid.place_col(0, "hello").unwrap();
+        assert!(!grid.can_place_col(0, "other"));
     }
 }
