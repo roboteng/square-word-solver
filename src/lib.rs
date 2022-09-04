@@ -24,20 +24,27 @@ pub fn five_letter_words(string: &str) -> Vec<String> {
         .collect()
 }
 
+#[derive(Debug)]
+pub enum PlacementError {
+    InvalidLetter,
+}
+
 pub struct WordGrid {
     words: [[Option<char>; 5]; 5],
+}
+
+impl Default for WordGrid {
+    fn default() -> Self {
+        WordGrid::new()
+    }
 }
 
 impl Display for WordGrid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.words.into_iter().for_each(|word| {
             let mut s = String::new();
-            word.into_iter().for_each(|letter| {
-                s.push(match letter {
-                    Some(l) => l,
-                    None => '-',
-                })
-            });
+            word.into_iter()
+                .for_each(|letter| s.push(letter.unwrap_or('-')));
             writeln!(f, "{}", s).unwrap();
         });
 
@@ -58,35 +65,35 @@ impl WordGrid {
         }
     }
 
-    pub fn place_row(&mut self, row_index: usize, word: &str) -> Result<(), ()> {
+    pub fn place_row(&mut self, row_index: usize, word: &str) -> Result<(), PlacementError> {
         if self.can_place_row(row_index, word) {
             let letters = word.as_bytes();
-            for i in 0..5 {
-                self.words[row_index][i] = Some(letters[i].into())
+            for (i, letter) in letters.iter().enumerate() {
+                self.words[row_index][i] = Some((*letter).into())
             }
             Ok(())
         } else {
-            Err(())
+            Err(PlacementError::InvalidLetter)
         }
     }
 
-    pub fn place_col(&mut self, col_index: usize, word: &str) -> Result<(), ()> {
+    pub fn place_col(&mut self, col_index: usize, word: &str) -> Result<(), PlacementError> {
         if self.can_place_col(col_index, word) {
             let letters = word.as_bytes();
-            for i in 0..5 {
-                self.words[i][col_index] = Some(letters[i].into())
+            for (i, letter) in letters.iter().enumerate() {
+                self.words[i][col_index] = Some((*letter).into())
             }
             Ok(())
         } else {
-            Err(())
+            Err(PlacementError::InvalidLetter)
         }
     }
 
     pub fn can_place_row(&self, row_index: usize, word: &str) -> bool {
         let letters = word.as_bytes();
-        for i in 0..5 {
+        for (i, letter) in letters.iter().enumerate() {
             if let Some(char) = self.words[row_index][i] {
-                if char != ((letters[i]) as char) {
+                if char != ((*letter) as char) {
                     return false;
                 }
             }
@@ -96,9 +103,9 @@ impl WordGrid {
 
     pub fn can_place_col(&self, col_index: usize, word: &str) -> bool {
         let letters = word.as_bytes();
-        for i in 0..5 {
+        for (i, letter) in letters.iter().enumerate() {
             if let Some(char) = self.words[i][col_index] {
-                if char != (letters[i] as char) {
+                if char != ((*letter) as char) {
                     return false;
                 }
             }
