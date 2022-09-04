@@ -1,4 +1,28 @@
+use regex::Regex;
+use std::{fs::File, io::Read, path::Path};
+
 use std::fmt::Display;
+
+pub fn get_words() -> Vec<String> {
+    let path = Path::new("/usr/share/dict/words");
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(err) => panic!("Couldn't open {:?} because {}", path, err),
+    };
+    let mut buffer = String::new();
+    file.read_to_string(&mut buffer).unwrap();
+    five_letter_words(&buffer)
+}
+
+pub fn five_letter_words(string: &str) -> Vec<String> {
+    let reg = Regex::new("^[a-z]{5}$").unwrap();
+    let words = string.split('\n');
+    words
+        .into_iter()
+        .filter(|word| -> bool { reg.is_match(word) })
+        .map(|s| s.to_string())
+        .collect()
+}
 
 pub struct WordGrid {
     words: [[Option<char>; 5]; 5],
@@ -62,7 +86,7 @@ impl WordGrid {
         let letters = word.as_bytes();
         for i in 0..5 {
             if let Some(char) = self.words[row_index][i] {
-                if char != letters[i].into() {
+                if char != ((letters[i]) as char) {
                     return false;
                 }
             }
@@ -74,7 +98,7 @@ impl WordGrid {
         let letters = word.as_bytes();
         for i in 0..5 {
             if let Some(char) = self.words[i][col_index] {
-                if char != letters[i].into() {
+                if char != (letters[i] as char) {
                     return false;
                 }
             }
