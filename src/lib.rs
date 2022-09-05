@@ -71,7 +71,7 @@ impl WordGrid {
         let mut grid = WordGrid::new();
         for (i, line) in source
             .trim()
-            .split("\n")
+            .split('\n')
             .map(|l| l.trim())
             .enumerate()
             .take(5)
@@ -82,16 +82,10 @@ impl WordGrid {
     }
 
     pub fn is_solved(&self) -> bool {
-        return match to_concrete(Vec::from(self.words.map(|row| to_concrete(Vec::from(row))))) {
+        match to_concrete(Vec::from(self.words.map(|row| to_concrete(Vec::from(row))))) {
             Some(words) => is_unique(&words),
             None => false,
-        };
-    }
-
-    pub fn is_filled(&self) -> bool {
-        self.words.iter().fold(true, |prev, word| {
-            prev && word.iter().fold(prev, |p, letter| p && letter.is_some())
-        })
+        }
     }
 
     pub fn place_row(&mut self, row_index: usize, word: &str) -> Result<(), PlacementError> {
@@ -143,7 +137,7 @@ impl WordGrid {
     }
 }
 
-pub fn is_unique(given: &Vec<Vec<char>>) -> bool {
+pub fn is_unique(given: &[Vec<char>]) -> bool {
     let mut words: Vec<String> = Vec::new();
     for row in given.iter() {
         let w: String = row.iter().collect();
@@ -151,8 +145,8 @@ pub fn is_unique(given: &Vec<Vec<char>>) -> bool {
     }
     for i in 0..5 {
         let mut word = String::new();
-        for j in 0..5 {
-            word.push(given[j][i])
+        for row in given.iter().take(5) {
+            word.push(row[i])
         }
         words.push(word);
     }
