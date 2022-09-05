@@ -1,4 +1,5 @@
 use regex::Regex;
+use std::collections::HashSet;
 use std::{fs::File, io::Read, path::Path};
 
 use std::fmt::Display;
@@ -75,11 +76,24 @@ impl WordGrid {
             .enumerate()
             .take(5)
         {
-            println!("Placeing {}", line);
             grid.place_row(i, line)?;
         }
         Ok(grid)
     }
+
+    pub fn is_solved(&self) -> bool {
+        return match to_concrete(Vec::from(self.words.map(|row| to_concrete(Vec::from(row))))) {
+            Some(words) => is_unique(&words),
+            None => false,
+        };
+    }
+
+    pub fn is_filled(&self) -> bool {
+        self.words.iter().fold(true, |prev, word| {
+            prev && word.iter().fold(prev, |p, letter| p && letter.is_some())
+        })
+    }
+
     pub fn place_row(&mut self, row_index: usize, word: &str) -> Result<(), PlacementError> {
         if self.can_place_row(row_index, word) {
             let letters = word.as_bytes();
@@ -127,6 +141,37 @@ impl WordGrid {
         }
         true
     }
+}
+
+pub fn is_unique(given: &Vec<Vec<char>>) -> bool {
+    let mut words: Vec<String> = Vec::new();
+    for row in given.iter() {
+        let w: String = row.iter().collect();
+        words.push(w);
+    }
+    for i in 0..5 {
+        let mut word = String::new();
+        for j in 0..5 {
+            word.push(given[j][i])
+        }
+        words.push(word);
+    }
+    let mut set = HashSet::new();
+    for word in words.iter() {
+        set.insert(word.as_str());
+    }
+    set.len() == words.len()
+}
+
+fn to_concrete<T>(iter: Vec<Option<T>>) -> Option<Vec<T>> {
+    let mut res = Vec::with_capacity(iter.len());
+    for item in iter {
+        match item {
+            Some(inner) => res.push(inner),
+            None => return None,
+        }
+    }
+    Some(res)
 }
 
 pub fn find_solutions(words: &Vec<String>) -> Vec<WordGrid> {
@@ -228,5 +273,39 @@ mod tests {
             "\n{}\nand\n{}\ndidn't match\n",
             grid, expected
         );
+    }
+
+    #[test]
+    fn correct_grid_is_solved() {
+        let grid = WordGrid::from(
+            "
+        grime
+        honor
+        outdo
+        steed
+        terse",
+        )
+        .unwrap();
+        assert!(grid.is_solved());
+    }
+
+    #[test]
+    fn empty_grid_is_not_solved() {
+        let grid = WordGrid::new();
+        assert!(!grid.is_solved());
+    }
+
+    #[test]
+    fn grid_with_same_word_in_row_and_column_is_not_solved() {
+        let grid = WordGrid::from(
+            "
+        grime
+        ronor
+        iutdo
+        mteed
+        eerse",
+        )
+        .unwrap();
+        assert!(!grid.is_solved());
     }
 }
