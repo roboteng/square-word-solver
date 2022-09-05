@@ -29,6 +29,7 @@ pub enum PlacementError {
     InvalidLetter,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct WordGrid {
     words: [[Option<char>; 5]; 5],
 }
@@ -65,6 +66,20 @@ impl WordGrid {
         }
     }
 
+    pub fn from(source: &str) -> Result<WordGrid, PlacementError> {
+        let mut grid = WordGrid::new();
+        for (i, line) in source
+            .trim()
+            .split("\n")
+            .map(|l| l.trim())
+            .enumerate()
+            .take(5)
+        {
+            println!("Placeing {}", line);
+            grid.place_row(i, line)?;
+        }
+        Ok(grid)
+    }
     pub fn place_row(&mut self, row_index: usize, word: &str) -> Result<(), PlacementError> {
         if self.can_place_row(row_index, word) {
             let letters = word.as_bytes();
@@ -112,6 +127,16 @@ impl WordGrid {
         }
         true
     }
+}
+
+pub fn find_solutions(words: &Vec<String>) -> Vec<WordGrid> {
+    let mut grid = WordGrid::new();
+    for word in words {
+        if grid.can_place_row(0, word) {
+            grid.place_row(0, word).unwrap();
+        }
+    }
+    vec![grid]
 }
 
 #[cfg(test)]
@@ -164,5 +189,44 @@ mod tests {
         let mut grid = WordGrid::new();
         grid.place_col(0, "hello").unwrap();
         assert!(!grid.can_place_col(0, "other"));
+    }
+
+    #[test]
+    #[ignore = "too hard right now"]
+    fn solves_easy() {
+        let valid_words = vec![
+            "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
+            "erode",
+        ]
+        .iter()
+        .map(|w| w.to_string())
+        .collect();
+        let solution = find_solutions(&valid_words);
+        solution.iter().for_each(|s| println!("{}", s));
+        assert_eq!(solution.len(), 2);
+    }
+
+    #[test]
+    fn easy_constructor() {
+        let grid = WordGrid::from(
+            "
+            abcde
+            bcdef
+            cdefg
+            defgh
+            efghi",
+        )
+        .unwrap();
+        let mut expected = WordGrid::new();
+        expected.place_row(0, "abcde").unwrap();
+        expected.place_row(1, "bcdef").unwrap();
+        expected.place_row(2, "cdefg").unwrap();
+        expected.place_row(3, "defgh").unwrap();
+        expected.place_row(4, "efghi").unwrap();
+        assert_eq!(
+            grid, expected,
+            "\n{}\nand\n{}\ndidn't match\n",
+            grid, expected
+        );
     }
 }
