@@ -56,30 +56,32 @@ pub struct WordList {
 
 impl WordList {
     pub fn new(words: Vec<&str>) -> WordList {
-        let mut dict = HashMap::new();
+        let mut this = WordList {
+            words: HashMap::new(),
+        };
+        let _words = words.iter().map(|w| w.chars().peekable());
         for word in words.iter() {
-            if let Some(letter) = word.chars().next() {
-                let next_words: Vec<&str> = words
-                    .iter()
-                    .filter(|w| w.starts_with(letter))
-                    .map(|w| {
-                        let mut chars = w.chars();
-                        chars.next();
-                        chars.as_str()
-                    })
-                    .collect();
-                let new_dict = WordList::new(next_words);
-                dict.insert(letter, Box::new(new_dict));
-            }
+            this.insert(word)
         }
-        WordList { words: dict }
+        this
     }
 
-    // fn insert<I>(chars: I) -> WordList
-    // where
-    //     I: Iterator<Item = char>,
-    // {
-    // }
+    fn insert(&mut self, word: &str) {
+        if let Some(first_letter) = word.chars().next() {
+            let rest = &word[1..];
+            if !self.words.contains_key(&first_letter) {
+                self.words.insert(
+                    first_letter,
+                    Box::new(WordList {
+                        words: HashMap::new(),
+                    }),
+                );
+            }
+            if let Some(dict) = self.words.get_mut(&first_letter) {
+                dict.insert(rest);
+            }
+        }
+    }
 
     pub fn contains(&self, word_to_check: &str) -> bool {
         let mut chars = word_to_check.chars();
@@ -196,16 +198,17 @@ mod test2 {
     // #[ignore = "doesn't end"]
     fn dict_test(b: &mut Bencher) {
         let binding = get_words();
-        let words: Vec<&str> = binding.iter().map(|s| s.as_str()).take(1000).collect();
+        let words: Vec<&str> = binding.iter().map(|s| s.as_str()).collect();
 
         let list = WordList::new(words.clone());
         let first = words[0];
         let last = words[words.len() - 1];
         b.iter(|| {
-            list.contains(first);
-            list.contains(last);
+            assert!(list.contains(first));
+            assert!(list.contains(last));
+            assert!(!list.contains("foobar"));
         })
     }
 }
 
-// Found: Solution { rows: ["which", "hello", "olios", "place", "socks"] }
+// Found: Solution { rows: ["about", "terns", "llama", "altar", "seeps"] }
