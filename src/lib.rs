@@ -118,23 +118,33 @@ pub fn find_solutions<'a>(
     possible_columns: &WordList,
     possible_rows: &'a Vec<&'a str>,
 ) -> Vec<Solution<'a>> {
-    let possible_columns = Arc::new(Mutex::new(possible_columns));
+    let possible_columns = Arc::new(possible_columns);
     let possible_rows = Arc::new(Mutex::new(possible_rows));
     let c = possible_columns.clone();
     let r = possible_rows.clone();
 
     let (tx, rx) = channel();
 
-    thread::scope(|scope| {
-        scope.spawn(move || {
-            let col = c.lock().unwrap();
-            let row = r.lock().unwrap();
-            let sol = _find_solutions(&col, &row, Solution::new(vec![]));
-            tx.send(sol).unwrap();
+    let n = 1;
+
+    for _ in 0..n {
+        let tx = tx.clone();
+        let c = c.clone();
+        let r = r.clone();
+        thread::scope(|scope| {
+            scope.spawn(move || {
+                let col = c;
+                let row = r.lock().unwrap();
+                let sol = _find_solutions(&col, &row, Solution::new(vec![]));
+                tx.send(sol).unwrap();
+            });
         });
-    });
-    let k = rx.recv().unwrap();
-    k
+    }
+    let mut sols = vec![];
+    for _ in 0..n {
+        sols.append(&mut rx.recv().unwrap());
+    }
+    sols
 }
 
 fn _find_solutions<'a>(
