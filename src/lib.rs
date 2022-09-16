@@ -2,7 +2,7 @@
 pub mod solver;
 extern crate test;
 use regex::Regex;
-use std::{fs::File, io::Read, path::Path};
+use std::{collections::HashMap, fs::File, io::Read, path::Path};
 
 pub fn get_words() -> Vec<String> {
     // let path = Path::new("/usr/share/dict/words");
@@ -50,22 +50,49 @@ impl<'a> Solution<'a> {
     }
 }
 
-pub struct WordList<'a> {
-    words: Vec<&'a str>,
+pub struct WordList {
+    words: HashMap<char, Box<WordList>>,
 }
 
-impl<'a> WordList<'a> {
+impl WordList {
     pub fn new(words: Vec<&str>) -> WordList {
-        WordList { words }
-    }
-
-    pub fn contains(&self, word_to_check: &str) -> bool {
-        for word in self.words.iter() {
-            if word.starts_with(word_to_check) {
-                return true;
+        let mut dict = HashMap::new();
+        for word in words.iter() {
+            if let Some(letter) = word.chars().next() {
+                let next_words: Vec<&str> = words
+                    .iter()
+                    .filter(|w| w.starts_with(letter))
+                    .map(|w| {
+                        let mut chars = w.chars();
+                        chars.next();
+                        chars.as_str()
+                    })
+                    .collect();
+                let new_dict = WordList::new(next_words);
+                dict.insert(letter, Box::new(new_dict));
             }
         }
-        false
+        WordList { words: dict }
+    }
+
+    // fn insert<I>(chars: I) -> WordList
+    // where
+    //     I: Iterator<Item = char>,
+    // {
+    // }
+
+    pub fn contains(&self, word_to_check: &str) -> bool {
+        let mut chars = word_to_check.chars();
+        match chars.next() {
+            Some(letter) => match self.words.get(&letter) {
+                Some(dict) => {
+                    let rest = chars.as_str();
+                    dict.contains(rest)
+                }
+                None => false,
+            },
+            None => true,
+        }
     }
 }
 
@@ -143,6 +170,13 @@ mod test2 {
     }
 
     #[test]
+    fn is_able_to_two_words_that_start_with_the_same_letters() {
+        let words = vec!["foo", "foobar"];
+        let list = WordList::new(words);
+        assert!(list.contains("foob"));
+    }
+
+    #[test]
     fn columns() {
         let solution = Solution::new(vec!["grime", "honor"]);
         let expected = vec!["gh", "ro", "in", "mo", "er"];
@@ -159,9 +193,10 @@ mod test2 {
     }
 
     #[bench]
+    // #[ignore = "doesn't end"]
     fn dict_test(b: &mut Bencher) {
         let binding = get_words();
-        let words: Vec<&str> = binding.iter().map(|s| s.as_str()).collect();
+        let words: Vec<&str> = binding.iter().map(|s| s.as_str()).take(1000).collect();
 
         let list = WordList::new(words.clone());
         let first = words[0];
