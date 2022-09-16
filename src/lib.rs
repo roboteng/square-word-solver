@@ -1,8 +1,7 @@
-use regex::Regex;
-use std::collections::HashSet;
-use std::{fs::File, io::Read, path::Path};
+pub mod solver;
 
-use std::fmt::Display;
+use regex::Regex;
+use std::{fs::File, io::Read, path::Path};
 
 pub fn get_words() -> Vec<String> {
     let path = Path::new("/usr/share/dict/words");
@@ -25,281 +24,88 @@ pub fn five_letter_words(string: &str) -> Vec<String> {
         .collect()
 }
 
-#[derive(Debug)]
-pub enum PlacementError {
-    InvalidLetter,
-}
-
 #[derive(Debug, PartialEq)]
-pub struct WordGrid {
-    words: [[Option<char>; 5]; 5],
+pub struct Solution<'a> {
+    rows: Vec<&'a str>,
 }
 
-impl Default for WordGrid {
-    fn default() -> Self {
-        WordGrid::new()
-    }
-}
-
-impl Display for WordGrid {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.words.into_iter().for_each(|word| {
-            let mut s = String::new();
-            word.into_iter()
-                .for_each(|letter| s.push(letter.unwrap_or('-')));
-            writeln!(f, "{}", s).unwrap();
-        });
-
-        Ok(())
+impl<'a> Solution<'a> {
+    pub fn new(rows: Vec<&'a str>) -> Solution {
+        Solution { rows }
     }
 }
 
-impl WordGrid {
-    pub fn new() -> WordGrid {
-        WordGrid {
-            words: [
-                [None, None, None, None, None],
-                [None, None, None, None, None],
-                [None, None, None, None, None],
-                [None, None, None, None, None],
-                [None, None, None, None, None],
-            ],
-        }
+pub struct WordList<'a> {
+    words: Vec<&'a str>,
+}
+
+impl<'a> WordList<'a> {
+    pub fn new(words: Vec<&str>) -> WordList {
+        WordList { words }
     }
 
-    pub fn from(source: &str) -> Result<WordGrid, PlacementError> {
-        let mut grid = WordGrid::new();
-        for (i, line) in source
-            .trim()
-            .split('\n')
-            .map(|l| l.trim())
-            .enumerate()
-            .take(5)
-        {
-            grid.place_row(i, line)?;
-        }
-        Ok(grid)
-    }
-
-    pub fn is_solved(&self) -> bool {
-        match to_concrete(Vec::from(self.words.map(|row| to_concrete(Vec::from(row))))) {
-            Some(words) => is_unique(&words),
-            None => false,
-        }
-    }
-
-    pub fn place_row(&mut self, row_index: usize, word: &str) -> Result<(), PlacementError> {
-        if self.can_place_row(row_index, word) {
-            let letters = word.as_bytes();
-            for (i, letter) in letters.iter().enumerate() {
-                self.words[row_index][i] = Some((*letter).into())
-            }
-            Ok(())
-        } else {
-            Err(PlacementError::InvalidLetter)
-        }
-    }
-
-    pub fn place_col(&mut self, col_index: usize, word: &str) -> Result<(), PlacementError> {
-        if self.can_place_col(col_index, word) {
-            let letters = word.as_bytes();
-            for (i, letter) in letters.iter().enumerate() {
-                self.words[i][col_index] = Some((*letter).into())
-            }
-            Ok(())
-        } else {
-            Err(PlacementError::InvalidLetter)
-        }
-    }
-
-    pub fn can_place_row(&self, row_index: usize, word: &str) -> bool {
-        let letters = word.as_bytes();
-        for (i, letter) in letters.iter().enumerate() {
-            if let Some(char) = self.words[row_index][i] {
-                if char != ((*letter) as char) {
-                    return false;
-                }
+    pub fn contains(&self, word_to_check: &str) -> bool {
+        for word in self.words.iter() {
+            if word.starts_with(word_to_check) {
+                return true;
             }
         }
-        true
-    }
-
-    pub fn can_place_col(&self, col_index: usize, word: &str) -> bool {
-        let letters = word.as_bytes();
-        for (i, letter) in letters.iter().enumerate() {
-            if let Some(char) = self.words[i][col_index] {
-                if char != ((*letter) as char) {
-                    return false;
-                }
-            }
-        }
-        true
+        false
     }
 }
 
-pub fn is_unique(given: &[Vec<char>]) -> bool {
-    let mut words: Vec<String> = Vec::new();
-    for row in given.iter() {
-        let w: String = row.iter().collect();
-        words.push(w);
+pub fn find_solutions<'a>(
+    _possible_columns: &WordList,
+    _possible_rows: &'a Vec<&str>,
+) -> Vec<Solution<'a>> {
+    if _possible_rows.len() == 0 {
+        return vec![];
     }
-    for i in 0..5 {
-        let mut word = String::new();
-        for row in given.iter().take(5) {
-            word.push(row[i])
-        }
-        words.push(word);
-    }
-    let mut set = HashSet::new();
-    for word in words.iter() {
-        set.insert(word.as_str());
-    }
-    set.len() == words.len()
-}
-
-fn to_concrete<T>(iter: Vec<Option<T>>) -> Option<Vec<T>> {
-    let mut res = Vec::with_capacity(iter.len());
-    for item in iter {
-        match item {
-            Some(inner) => res.push(inner),
-            None => return None,
-        }
-    }
-    Some(res)
-}
-
-pub fn find_solutions(words: &Vec<String>) -> Vec<WordGrid> {
-    let mut grid = WordGrid::new();
-    for word in words {
-        if grid.can_place_row(0, word) {
-            grid.place_row(0, word).unwrap();
-        }
-    }
-    vec![grid]
+    vec![Solution::new(_possible_rows.clone())]
 }
 
 #[cfg(test)]
-mod tests {
+mod test2 {
     use super::*;
 
     #[test]
-    fn can_place_on_empty_grid() {
-        let grid = WordGrid::new();
-        assert!(grid.can_place_row(0, "hello"));
+    fn empty_word_list_does_not_contain_a_word() {
+        let l = WordList::new(vec![]);
+        assert!(!l.contains("foo"));
     }
 
     #[test]
-    fn cant_place_new_word_on_existing_word() {
-        let mut grid = WordGrid::new();
-        grid.place_row(0, "hello").unwrap();
-        assert!(!grid.can_place_row(0, "other"));
+    fn word_list_contains_a_word() {
+        let l = WordList::new(vec!["foo"]);
+        assert!(l.contains("foo"));
     }
 
     #[test]
-    fn can_place_same_word_on_same_row() {
-        let mut grid = WordGrid::new();
-        grid.place_row(0, "hello").unwrap();
-        assert!(grid.can_place_row(0, "hello"));
+    fn word_list_does_not_contain_a_different_word() {
+        let l = WordList::new(vec!["bar"]);
+        assert!(!l.contains("foo"));
     }
 
     #[test]
-    fn can_place_word_on_col() {
-        let mut grid = WordGrid::new();
-        grid.place_row(0, "hello").unwrap();
-        assert!(grid.can_place_col(0, "hanoi"));
+    fn word_list_includes_if_the_starting_letters_match() {
+        let l = WordList::new(vec!["foobar"]);
+        assert!(l.contains("foo"));
     }
 
     #[test]
-    fn cant_place_word_on_col() {
-        let mut grid = WordGrid::new();
-        grid.place_row(0, "hello").unwrap();
-        assert!(!grid.can_place_col(0, "other"));
+    fn cannot_find_solutions_with_empty_word_list() {
+        let list = WordList::new(vec![]);
+        let rows = vec![];
+        let solutions = find_solutions(&list, &rows);
+        assert_eq!(solutions, vec![]);
     }
 
     #[test]
-    fn cant_place_word_on_last_col() {
-        let mut grid = WordGrid::new();
-        grid.place_row(0, "hello").unwrap();
-        assert!(!grid.can_place_col(4, "stahp"));
-    }
-
-    #[test]
-    fn cant_place_different_words_on_same_col() {
-        let mut grid = WordGrid::new();
-        grid.place_col(0, "hello").unwrap();
-        assert!(!grid.can_place_col(0, "other"));
-    }
-
-    #[test]
-    #[ignore = "too hard right now"]
-    fn solves_easy() {
-        let valid_words = vec![
-            "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
-            "erode",
-        ]
-        .iter()
-        .map(|w| w.to_string())
-        .collect();
-        let solution = find_solutions(&valid_words);
-        solution.iter().for_each(|s| println!("{}", s));
-        assert_eq!(solution.len(), 2);
-    }
-
-    #[test]
-    fn easy_constructor() {
-        let grid = WordGrid::from(
-            "
-            abcde
-            bcdef
-            cdefg
-            defgh
-            efghi",
-        )
-        .unwrap();
-        let mut expected = WordGrid::new();
-        expected.place_row(0, "abcde").unwrap();
-        expected.place_row(1, "bcdef").unwrap();
-        expected.place_row(2, "cdefg").unwrap();
-        expected.place_row(3, "defgh").unwrap();
-        expected.place_row(4, "efghi").unwrap();
-        assert_eq!(
-            grid, expected,
-            "\n{}\nand\n{}\ndidn't match\n",
-            grid, expected
-        );
-    }
-
-    #[test]
-    fn correct_grid_is_solved() {
-        let grid = WordGrid::from(
-            "
-        grime
-        honor
-        outdo
-        steed
-        terse",
-        )
-        .unwrap();
-        assert!(grid.is_solved());
-    }
-
-    #[test]
-    fn empty_grid_is_not_solved() {
-        let grid = WordGrid::new();
-        assert!(!grid.is_solved());
-    }
-
-    #[test]
-    fn grid_with_same_word_in_row_and_column_is_not_solved() {
-        let grid = WordGrid::from(
-            "
-        grime
-        ronor
-        iutdo
-        mteed
-        eerse",
-        )
-        .unwrap();
-        assert!(!grid.is_solved());
+    fn finds_1_solution_with_word_list_from_known_solution() {
+        let rows = vec!["grime", "honor", "outdo", "steed", "terse"];
+        let columns = vec!["ghost", "route", "inter", "modes", "erode"];
+        let list = WordList::new(columns);
+        let solutions = find_solutions(&list, &rows);
+        assert_eq!(solutions, vec![Solution::new(rows.clone())]);
     }
 }
