@@ -2,7 +2,14 @@
 pub mod solver;
 extern crate test;
 use regex::Regex;
-use std::{collections::HashMap, fs::File, io::Read, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    io::Read,
+    path::Path,
+    sync::{Arc, Mutex},
+    thread,
+};
 
 pub fn get_words() -> Vec<String> {
     // let path = Path::new("/usr/share/dict/words");
@@ -47,6 +54,18 @@ impl<'a> Solution<'a> {
             columns.push(s);
         }
         columns
+    }
+
+    fn is_unique(&self) -> bool {
+        let mut set = HashSet::new();
+        let columns = self.columns();
+        for word in columns.iter() {
+            set.insert(word.as_str());
+        }
+        for word in self.rows.iter() {
+            set.insert(word);
+        }
+        set.len() == 10
     }
 }
 
@@ -121,7 +140,7 @@ fn _find_solutions<'a>(
             .all(|column| possible_columns.contains(column))
         {
             if sol.rows.len() == 5 {
-                if sol.columns() != sol.rows {
+                if sol.is_unique() {
                     println!("Found: {:?}", sol);
                     solutions.push(sol);
                 }
