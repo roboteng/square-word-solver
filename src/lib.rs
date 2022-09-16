@@ -7,6 +7,8 @@ use std::{
     fs::File,
     io::Read,
     path::Path,
+    sync::{mpsc::channel, Arc, Mutex},
+    thread,
 };
 
 pub fn get_words() -> Vec<String> {
@@ -113,15 +115,31 @@ impl WordList {
 }
 
 pub fn find_solutions<'a>(
-    _possible_columns: &WordList,
-    _possible_rows: &'a Vec<&str>,
+    possible_columns: &WordList,
+    possible_rows: &'a Vec<&'a str>,
 ) -> Vec<Solution<'a>> {
-    _find_solutions(_possible_columns, _possible_rows, Solution::new(vec![]))
+    let possible_columns = Arc::new(Mutex::new(possible_columns));
+    let possible_rows = Arc::new(Mutex::new(possible_rows));
+    let c = possible_columns.clone();
+    let r = possible_rows.clone();
+
+    let (tx, rx) = channel();
+
+    thread::scope(|scope| {
+        scope.spawn(move || {
+            let col = c.lock().unwrap();
+            let row = r.lock().unwrap();
+            let sol = _find_solutions(&col, &row, Solution::new(vec![]));
+            tx.send(sol).unwrap();
+        });
+    });
+    let k = rx.recv().unwrap();
+    k
 }
 
 fn _find_solutions<'a>(
     possible_columns: &WordList,
-    possible_rows: &'a Vec<&str>,
+    possible_rows: &'a Vec<&'a str>,
     in_progress_solution: Solution<'a>,
 ) -> Vec<Solution<'a>> {
     let mut solutions = vec![];
