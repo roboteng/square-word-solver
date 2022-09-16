@@ -7,7 +7,7 @@ use std::{
     fs::File,
     io::Read,
     path::Path,
-    sync::{mpsc::channel, Arc, Mutex},
+    sync::{mpsc::channel, Arc},
     thread,
 };
 
@@ -119,27 +119,41 @@ pub fn find_solutions<'a>(
     possible_rows: &'a Vec<&'a str>,
 ) -> Vec<Solution<'a>> {
     let possible_columns = Arc::new(possible_columns);
-    let possible_rows = Arc::new(Mutex::new(possible_rows));
+    let possible_rows = Arc::new(possible_rows);
     let c = possible_columns.clone();
     let r = possible_rows.clone();
 
     let (tx, rx) = channel();
 
-    let n = 1;
+    let n = 8;
 
-    for _ in 0..n {
-        let tx = tx.clone();
-        let c = c.clone();
-        let r = r.clone();
-        thread::scope(|scope| {
+    thread::scope(|scope| {
+        for i in 0..n {
+            let tx = tx.clone();
+            let c = c.clone();
+            let r = r.clone();
+
             scope.spawn(move || {
+                let mut sol = vec![];
                 let col = c;
-                let row = r.lock().unwrap();
-                let sol = _find_solutions(&col, &row, Solution::new(vec![]));
+                let row = r;
+
+                let mut starts = vec![];
+                for (j, word) in row.iter().enumerate() {
+                    if (i + j) % n == 0 {
+                        let mut k = Solution::new(vec![]);
+                        k.rows.push(word);
+                        starts.push(k);
+                    }
+                }
+                for start in starts.iter() {
+                    let mut s = _find_solutions(&col, &row, start.clone());
+                    sol.append(&mut s);
+                }
                 tx.send(sol).unwrap();
             });
-        });
-    }
+        }
+    });
     let mut sols = vec![];
     for _ in 0..n {
         sols.append(&mut rx.recv().unwrap());
