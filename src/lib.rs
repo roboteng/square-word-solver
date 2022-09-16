@@ -7,8 +7,6 @@ use std::{
     fs::File,
     io::Read,
     path::Path,
-    sync::{Arc, Mutex},
-    thread,
 };
 
 pub fn get_words() -> Vec<String> {
@@ -33,7 +31,7 @@ pub fn five_letter_words(string: &str) -> Vec<String> {
         .collect()
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Solution<'a> {
     rows: Vec<&'a str>,
 }
@@ -88,17 +86,14 @@ impl WordList {
     fn insert(&mut self, word: &str) {
         if let Some(first_letter) = word.chars().next() {
             let rest = &word[1..];
-            if !self.words.contains_key(&first_letter) {
-                self.words.insert(
-                    first_letter,
+            self.words
+                .entry(first_letter)
+                .or_insert_with(|| {
                     Box::new(WordList {
                         words: HashMap::new(),
-                    }),
-                );
-            }
-            if let Some(dict) = self.words.get_mut(&first_letter) {
-                dict.insert(rest);
-            }
+                    })
+                })
+                .insert(rest);
         }
     }
 
@@ -121,14 +116,13 @@ pub fn find_solutions<'a>(
     _possible_columns: &WordList,
     _possible_rows: &'a Vec<&str>,
 ) -> Vec<Solution<'a>> {
-    _find_solutions(_possible_columns, _possible_rows, Solution::new(vec![]), 0)
+    _find_solutions(_possible_columns, _possible_rows, Solution::new(vec![]))
 }
 
 fn _find_solutions<'a>(
     possible_columns: &WordList,
     possible_rows: &'a Vec<&str>,
     in_progress_solution: Solution<'a>,
-    row_index: usize,
 ) -> Vec<Solution<'a>> {
     let mut solutions = vec![];
     for word in possible_rows.iter() {
@@ -145,7 +139,7 @@ fn _find_solutions<'a>(
                     solutions.push(sol);
                 }
             } else {
-                let mut sols = _find_solutions(possible_columns, possible_rows, sol, row_index + 1);
+                let mut sols = _find_solutions(possible_columns, possible_rows, sol);
                 solutions.append(&mut sols);
             }
         }
