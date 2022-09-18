@@ -118,10 +118,8 @@ pub fn find_solutions<'a>(
     possible_columns: &WordList,
     possible_rows: &'a Vec<&'a str>,
 ) -> Vec<Solution<'a>> {
-    let possible_columns = Arc::new(possible_columns);
-    let possible_rows = Arc::new(possible_rows);
-    let c = possible_columns.clone();
-    let r = possible_rows.clone();
+    let c = Arc::new(possible_columns);
+    let r = Arc::new(possible_rows);
 
     let (tx, rx) = channel();
 
@@ -265,5 +263,3 @@ mod test2 {
         })
     }
 }
-
-// Found: Solution { rows: ["about", "terns", "llama", "altar", "seeps"] }
