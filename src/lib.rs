@@ -2,13 +2,14 @@
 pub mod solver;
 extern crate test;
 use regex::Regex;
+use std::io::Write;
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
-    fs::File,
+    fs::{File, OpenOptions},
     io::Read,
     path::Path,
-    sync::{mpsc::channel, Arc},
+    sync::{mpsc::channel, Arc, Mutex},
     thread,
 };
 
@@ -128,40 +129,50 @@ pub fn find_solutions<'a>(
     let c = Arc::new(possible_columns);
     let r = Arc::new(possible_rows);
 
-    let (tx, rx) = channel();
+    let starts = Arc::new(Mutex::new(possible_rows.iter()));
+    let (sol_tx, sol_rx) = channel();
 
     let n = 8;
 
     thread::scope(|scope| {
-        for i in 0..n {
-            let tx = tx.clone();
+        for _ in 0..n {
+            let tx = sol_tx.clone();
             let c = c.clone();
             let r = r.clone();
+            let starts = starts.clone();
 
             scope.spawn(move || {
-                let mut sol = vec![];
                 let col = c;
                 let row = r;
+                let mut start: Option<&&str> = None;
 
-                let mut starts = vec![];
-                for (j, word) in row.iter().enumerate() {
-                    if (i + j) % n == 0 {
-                        let mut k = Solution::new(vec![]);
-                        k.rows.push(word);
-                        starts.push(k);
+                {
+                    start = starts.lock().unwrap().next();
+                }
+                while let Some(start_word) = start {
+                    let start_solution = Solution::new(vec![start_word]);
+                    let solutions = _find_solutions(&col, &row, start_solution);
+                    tx.send(solutions).unwrap();
+                    {
+                        start = starts.lock().unwrap().next();
                     }
                 }
-                for start in starts.iter() {
-                    let mut s = _find_solutions(&col, &row, start.clone());
-                    sol.append(&mut s);
-                }
-                tx.send(sol).unwrap();
             });
         }
     });
     let mut sols = vec![];
-    for _ in 0..n {
-        sols.append(&mut rx.recv().unwrap());
+    for _ in 0..possible_rows.len() {
+        let mut current_solutions = sol_rx.recv().unwrap();
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("solutions.txt")
+            .unwrap();
+
+        for solution in current_solutions.iter() {
+            writeln!(file, "{}", solution).unwrap();
+        }
+        sols.append(&mut current_solutions);
     }
     sols
 }
