@@ -135,56 +135,68 @@ pub fn find_solutions<'a>(
     let sols = Arc::new(Mutex::new(vec![]));
     let solution_list = sols.clone();
     let len = possible_rows.len();
-    thread::scope(|collector| {
-        collector.spawn(move || {
-            for _ in 0..len {
-                let mut current_solutions: Vec<Solution> = sol_rx.recv().unwrap();
-                let mut file = OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open("solutions.txt")
-                    .unwrap();
-
-                for solution in current_solutions.iter() {
-                    writeln!(file, "{}", solution).unwrap();
-                }
-                let mut solution_list = solution_list.lock().unwrap();
-                solution_list.append(&mut current_solutions);
-            }
+    thread::scope(|scope| {
+        scope.spawn(move || {
+            spawn_collector(len, sol_rx, solution_list);
         });
 
         let n = 8;
 
-        thread::scope(|scope| {
-            for _ in 0..n {
-                let tx = sol_tx.clone();
-                let c = c.clone();
-                let r = r.clone();
-                let starts = starts.clone();
+        for _ in 0..n {
+            let tx = sol_tx.clone();
+            let c = c.clone();
+            let r = r.clone();
+            let starts = starts.clone();
 
-                scope.spawn(move || {
-                    let col = c;
-                    let row = r;
-                    let mut start: Option<&&str> = None;
-
-                    {
-                        start = starts.lock().unwrap().next();
-                    }
-                    while let Some(start_word) = start {
-                        let start_solution = Solution::new(vec![start_word]);
-                        let solutions = _find_solutions(&col, &row, start_solution);
-                        tx.send(solutions).unwrap();
-                        {
-                            start = starts.lock().unwrap().next();
-                        }
-                    }
-                });
-            }
-        });
+            scope.spawn(move || {
+                spawn_worker(c, r, starts, tx);
+            });
+        }
     });
 
     let x = sols.lock().unwrap().to_vec();
     x
+}
+
+fn spawn_worker<'a>(
+    col: Arc<&WordList>,
+    row: Arc<&'a Vec<&'a str>>,
+    starts: Arc<Mutex<std::slice::Iter<&'a str>>>,
+    tx: std::sync::mpsc::Sender<Vec<Solution<'a>>>,
+) {
+    let mut start: Option<&&str> = None;
+    {
+        start = starts.lock().unwrap().next();
+    }
+    while let Some(start_word) = start {
+        let start_solution = Solution::new(vec![start_word]);
+        let solutions = _find_solutions(&col, &row, start_solution);
+        tx.send(solutions).unwrap();
+        {
+            start = starts.lock().unwrap().next();
+        }
+    }
+}
+
+fn spawn_collector<'a>(
+    len: usize,
+    sol_rx: std::sync::mpsc::Receiver<Vec<Solution<'a>>>,
+    solution_list: Arc<Mutex<Vec<Solution<'a>>>>,
+) {
+    for _ in 0..len {
+        let mut current_solutions: Vec<Solution> = sol_rx.recv().unwrap();
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("solutions.txt")
+            .unwrap();
+
+        for solution in current_solutions.iter() {
+            writeln!(file, "{}", solution).unwrap();
+        }
+        let mut solution_list = solution_list.lock().unwrap();
+        solution_list.append(&mut current_solutions);
+    }
 }
 
 fn _find_solutions<'a>(
