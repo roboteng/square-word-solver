@@ -4,6 +4,7 @@ extern crate test;
 use regex::Regex;
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Display,
     fs::File,
     io::Read,
     path::Path,
@@ -25,7 +26,7 @@ pub fn get_words() -> Vec<String> {
 
 pub fn five_letter_words(string: &str) -> Vec<String> {
     let reg = Regex::new("^[a-z]{5}$").unwrap();
-    let words = string.split('\n');
+    let words = string.lines();
     words
         .into_iter()
         .filter(|word| -> bool { reg.is_match(word) })
@@ -66,6 +67,12 @@ impl<'a> Solution<'a> {
             set.insert(word);
         }
         set.len() == 10
+    }
+}
+
+impl<'a> Display for Solution<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.rows.join(",").as_str())
     }
 }
 
@@ -245,6 +252,14 @@ mod test2 {
         let list = WordList::new(columns);
         let solutions = find_solutions(&list, &rows);
         assert_eq!(solutions, vec![Solution::new(rows.clone())]);
+    }
+
+    #[test]
+    fn solution_displays_as_a_comma_separated_list_of_words() {
+        let solution = Solution::new(vec!["grime", "honor", "outdo", "steed", "terse"]);
+        let actual = format!("{}", solution);
+        let expected = "grime,honor,outdo,steed,terse";
+        assert_eq!(actual, expected);
     }
 
     #[bench]
