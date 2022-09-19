@@ -132,49 +132,59 @@ pub fn find_solutions<'a>(
     let starts = Arc::new(Mutex::new(possible_rows.iter()));
     let (sol_tx, sol_rx) = channel();
 
-    let n = 8;
+    let sols = Arc::new(Mutex::new(vec![]));
+    let solution_list = sols.clone();
+    let len = possible_rows.len();
+    thread::scope(|collector| {
+        collector.spawn(move || {
+            for _ in 0..len {
+                let mut current_solutions: Vec<Solution> = sol_rx.recv().unwrap();
+                let mut file = OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open("solutions.txt")
+                    .unwrap();
 
-    thread::scope(|scope| {
-        for _ in 0..n {
-            let tx = sol_tx.clone();
-            let c = c.clone();
-            let r = r.clone();
-            let starts = starts.clone();
-
-            scope.spawn(move || {
-                let col = c;
-                let row = r;
-                let mut start: Option<&&str> = None;
-
-                {
-                    start = starts.lock().unwrap().next();
+                for solution in current_solutions.iter() {
+                    writeln!(file, "{}", solution).unwrap();
                 }
-                while let Some(start_word) = start {
-                    let start_solution = Solution::new(vec![start_word]);
-                    let solutions = _find_solutions(&col, &row, start_solution);
-                    tx.send(solutions).unwrap();
+                let mut solution_list = solution_list.lock().unwrap();
+                solution_list.append(&mut current_solutions);
+            }
+        });
+
+        let n = 8;
+
+        thread::scope(|scope| {
+            for _ in 0..n {
+                let tx = sol_tx.clone();
+                let c = c.clone();
+                let r = r.clone();
+                let starts = starts.clone();
+
+                scope.spawn(move || {
+                    let col = c;
+                    let row = r;
+                    let mut start: Option<&&str> = None;
+
                     {
                         start = starts.lock().unwrap().next();
                     }
-                }
-            });
-        }
+                    while let Some(start_word) = start {
+                        let start_solution = Solution::new(vec![start_word]);
+                        let solutions = _find_solutions(&col, &row, start_solution);
+                        tx.send(solutions).unwrap();
+                        {
+                            start = starts.lock().unwrap().next();
+                        }
+                    }
+                });
+            }
+        });
     });
-    let mut sols = vec![];
-    for _ in 0..possible_rows.len() {
-        let mut current_solutions = sol_rx.recv().unwrap();
-        let mut file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("solutions.txt")
-            .unwrap();
 
-        for solution in current_solutions.iter() {
-            writeln!(file, "{}", solution).unwrap();
-        }
-        sols.append(&mut current_solutions);
-    }
-    sols
+    let x = sols.lock().unwrap().to_vec();
+    x
 }
 
 fn _find_solutions<'a>(
