@@ -149,7 +149,7 @@ pub fn find_solutions<'a>(
             let starts = starts.clone();
 
             scope.spawn(move || {
-                spawn_worker(c, r, starts, tx);
+                spawn_worker(&c, &r, starts, tx);
             });
         }
     });
@@ -159,18 +159,15 @@ pub fn find_solutions<'a>(
 }
 
 fn spawn_worker<'a>(
-    col: Arc<&WordList>,
-    row: Arc<&'a Vec<&'a str>>,
+    col: &WordList,
+    row: &'a Vec<&'a str>,
     starts: Arc<Mutex<std::slice::Iter<&'a str>>>,
     tx: std::sync::mpsc::Sender<Vec<Solution<'a>>>,
 ) {
-    let mut start: Option<&&str> = None;
-    {
-        start = starts.lock().unwrap().next();
-    }
+    let mut start: Option<&&str> = { starts.lock().unwrap().next() };
     while let Some(start_word) = start {
         let start_solution = Solution::new(vec![start_word]);
-        let solutions = _find_solutions(&col, &row, start_solution);
+        let solutions = _find_solutions(col, row, start_solution);
         tx.send(solutions).unwrap();
         {
             start = starts.lock().unwrap().next();
