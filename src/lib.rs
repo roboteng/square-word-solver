@@ -29,7 +29,6 @@ pub fn five_letter_words(string: &str) -> Vec<String> {
     let reg = Regex::new("^[a-z]{5}$").unwrap();
     let words = string.lines();
     words
-        .into_iter()
         .filter(|word| -> bool { reg.is_match(word) })
         .map(|s| s.to_string())
         .collect()
@@ -41,8 +40,8 @@ pub struct Solution<'a> {
 }
 
 impl<'a> Solution<'a> {
-    pub fn new(rows: Vec<&'a str>) -> Solution {
-        Solution { rows }
+    pub fn new(rows: Vec<&'a str>) -> Self {
+        Self { rows }
     }
 
     fn columns(&self) -> Vec<String> {
@@ -59,6 +58,9 @@ impl<'a> Solution<'a> {
     }
 
     fn is_unique(&self) -> bool {
+        if self.rows.len() < 5 {
+            return true;
+        }
         let mut set = HashSet::new();
         let columns = self.columns();
         for word in columns.iter() {
@@ -292,8 +294,25 @@ mod test2 {
         assert_eq!(actual, expected);
     }
 
+    #[test]
+    fn a_correct_solution_is_unique() {
+        let solution = Solution::new(vec!["grime", "honor", "outdo", "steed", "terse"]);
+        assert!(solution.is_unique());
+    }
+
+    #[test]
+    fn a_solution_with_the_same_row_as_column_is_not_unique() {
+        let solution = Solution::new(vec!["grime", "ronor", "iutdo", "mteed", "eerse"]);
+        assert!(!solution.is_unique());
+    }
+
+    #[test]
+    fn an_incomplete_solution_is_unique() {
+        let solution = Solution::new(vec!["grime", "ronor", "iutdo", "mteed"]);
+        assert!(solution.is_unique());
+    }
+
     #[bench]
-    // #[ignore = "doesn't end"]
     fn dict_test(b: &mut Bencher) {
         let binding = get_words();
         let words: Vec<&str> = binding.iter().map(|s| s.as_str()).collect();
