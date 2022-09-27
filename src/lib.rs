@@ -1,5 +1,6 @@
 #![feature(test)]
 pub mod solver;
+extern crate num_cpus;
 extern crate test;
 use regex::Regex;
 use std::io::Write;
@@ -14,7 +15,6 @@ use std::{
 };
 
 pub fn get_words() -> Vec<String> {
-    // let path = Path::new("/usr/share/dict/words");
     let path = Path::new("sgb-words.txt");
     let mut file = match File::open(path) {
         Ok(file) => file,
@@ -138,7 +138,7 @@ pub fn find_solutions<'a>(
             spawn_collector(len, sol_rx, solution_list);
         });
 
-        let n = 8;
+        let n = num_cpus::get();
 
         for _ in 0..n {
             let tx = sol_tx.clone();
