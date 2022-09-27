@@ -322,4 +322,18 @@ mod test2 {
             assert!(!list.contains("foobar"));
         })
     }
+
+    // old: 891,508 ns/iter (+/- 82,044)
+    #[bench]
+    fn actual_solve(b: &mut Bencher) {
+        let valid_words = vec![
+            "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
+            "erode", "level", "oxide", "atria", "truck", "hasty", "loath", "extra", "virus",
+            "edict", "leaky", "loses", "apple", "diode", "lured", "emery", "ladle", "opium",
+            "spore", "elder", "seedy",
+        ];
+        let list = WordList::new(valid_words.clone());
+
+        b.iter(|| find_solutions(&list, &valid_words))
+    }
 }
