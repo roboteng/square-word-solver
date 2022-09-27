@@ -165,7 +165,7 @@ fn spawn_worker<'a>(
     let mut start: Option<&&str> = { starts.lock().unwrap().next() };
     while let Some(start_word) = start {
         let start_solution = Solution::new(vec![start_word]);
-        let solutions = _find_solutions(col, row, start_solution);
+        let solutions = find_subsolutions(col, row, &start_solution);
         tx.send(solutions).unwrap();
         {
             start = starts.lock().unwrap().next();
@@ -194,10 +194,10 @@ fn spawn_collector<'a>(
     }
 }
 
-fn _find_solutions<'a>(
+fn find_subsolutions<'a>(
     possible_columns: &WordList,
     possible_rows: &'a Vec<&'a str>,
-    in_progress_solution: Solution<'a>,
+    in_progress_solution: &Solution<'a>,
 ) -> Vec<Solution<'a>> {
     let mut solutions = vec![];
     for word in possible_rows.iter() {
@@ -213,7 +213,7 @@ fn _find_solutions<'a>(
                     solutions.push(sol);
                 }
             } else {
-                let mut sols = _find_solutions(possible_columns, possible_rows, sol);
+                let mut sols = find_subsolutions(possible_columns, possible_rows, &sol);
                 solutions.append(&mut sols);
             }
         }
@@ -322,8 +322,6 @@ mod test2 {
         })
     }
 
-    // old: 1,124,040 ns/iter (+/- 60,225)
-    // old: 1,118,128 ns/iter (+/- 93,282)
     #[bench]
     fn actual_solve(b: &mut Bencher) {
         let valid_words = vec![
@@ -334,6 +332,6 @@ mod test2 {
         ];
         let list = WordList::new(valid_words.clone());
 
-        b.iter(|| _find_solutions(&list, &valid_words, Solution::new(vec![])))
+        b.iter(|| find_subsolutions(&list, &valid_words, &Solution::new(vec![])))
     }
 }
