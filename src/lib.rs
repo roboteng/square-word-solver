@@ -210,7 +210,6 @@ fn _find_solutions<'a>(
         {
             if sol.rows.len() == 5 {
                 if sol.is_unique() {
-                    println!("Found: {:?}", sol);
                     solutions.push(sol);
                 }
             } else {
@@ -323,7 +322,8 @@ mod test2 {
         })
     }
 
-    // old: 891,508 ns/iter (+/- 82,044)
+    // old: 1,124,040 ns/iter (+/- 60,225)
+    // old: 1,118,128 ns/iter (+/- 93,282)
     #[bench]
     fn actual_solve(b: &mut Bencher) {
         let valid_words = vec![
@@ -334,6 +334,6 @@ mod test2 {
         ];
         let list = WordList::new(valid_words.clone());
 
-        b.iter(|| find_solutions(&list, &valid_words))
+        b.iter(|| _find_solutions(&list, &valid_words, Solution::new(vec![])))
     }
 }
