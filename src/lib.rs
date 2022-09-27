@@ -15,7 +15,7 @@ use std::{
 };
 
 pub fn get_words() -> Vec<String> {
-    let path = Path::new("sgb-words.txt");
+    let path = Path::new("words.txt");
     let mut file = match File::open(path) {
         Ok(file) => file,
         Err(err) => panic!("Couldn't open {:?} because {}", path, err),
