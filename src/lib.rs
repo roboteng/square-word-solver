@@ -88,7 +88,6 @@ impl WordList {
         let mut this = WordList {
             words: HashMap::new(),
         };
-        let _words = words.iter().map(|w| w.chars().peekable());
         for word in words.iter() {
             this.insert(word)
         }
@@ -112,11 +111,8 @@ impl WordList {
     pub fn contains(&self, word_to_check: &str) -> bool {
         let mut chars = word_to_check.chars();
         match chars.next() {
-            Some(letter) => match self.words.get(&letter) {
-                Some(dict) => {
-                    let rest = chars.as_str();
-                    dict.contains(rest)
-                }
+            Some(head) => match self.words.get(&head) {
+                Some(dict) => dict.contains(chars.as_str()),
                 None => false,
             },
             None => true,
