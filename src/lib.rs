@@ -1,4 +1,4 @@
-// #![feature(test)]
+#![feature(test)]
 extern crate num_cpus;
 use builder::{AddedWord, SolutionBuilder};
 use regex::Regex;
@@ -17,7 +17,7 @@ mod builder;
 mod solver;
 
 pub fn get_words() -> Result<Vec<String>, io::Error> {
-    let path = Path::new("words.txt");
+    let path = Path::new("/usr/share/dict/words");
     let mut file = File::open(path)?;
 
     let mut buffer = String::new();
@@ -113,22 +113,26 @@ pub fn find_solutions<'a>(
     let solution_list = sols.clone();
     thread::scope(|scope| {
         let n = num_cpus::get();
+        println!("running on {n} threads");
         let collector = scope.spawn(move || {
             spawn_collector(n, sol_rx, solution_list);
         });
 
-        let threads = (0..n).map(|_| {
+        let mut threads = Vec::new();
+        for _ in 0..n {
             let tx = sol_tx.clone();
             let c = c.clone();
             let r = r.clone();
             let starts = starts.clone();
 
-            scope.spawn(move || {
+            threads.push(scope.spawn(move || {
                 spawn_worker(&c, &r, starts, tx);
-            })
-        });
+            }));
+        }
 
-        threads.for_each(|t| t.join().unwrap());
+        for thread in threads {
+            thread.join().unwrap();
+        }
         collector.join().unwrap();
     });
 
@@ -217,8 +221,8 @@ fn find_subsolutions<'a>(
 #[cfg(test)]
 mod my_test {
     use super::*;
-    // use test::Bencher;
-    // extern crate test;
+    use test::Bencher;
+    extern crate test;
 
     #[test]
     fn empty_word_list_does_not_contain_a_word() {
@@ -266,5 +270,33 @@ mod my_test {
         let list = WordList::new([columns.clone(), rows.clone()].concat());
         let solutions = find_solutions(&list, &[columns.clone(), rows.clone()].concat());
         assert_eq!(solutions, vec![Solution::new(rows), Solution::new(columns)]);
+    }
+
+    #[bench]
+    fn dict_test(b: &mut Bencher) {
+        let binding = get_words().unwrap();
+        let words: Vec<&str> = binding.iter().map(|s| s.as_str()).collect();
+
+        let list = WordList::new(words.clone());
+        let first = words[0];
+        let last = words[words.len() - 1];
+        b.iter(|| {
+            assert!(list.contains(first));
+            assert!(list.contains(last));
+            assert!(!list.contains("foobar"));
+        })
+    }
+
+    #[bench]
+    fn actual_solve(b: &mut Bencher) {
+        let valid_words = vec![
+            "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
+            "erode", "level", "oxide", "atria", "truck", "hasty", "loath", "extra", "virus",
+            "edict", "leaky", "loses", "apple", "diode", "lured", "emery", "ladle", "opium",
+            "spore", "elder", "seedy",
+        ];
+        let list = WordList::new(valid_words.clone());
+
+        b.iter(|| find_subsolutions(&list, &valid_words, &mut SolutionBuilder::new(&list)))
     }
 }

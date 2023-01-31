@@ -115,8 +115,8 @@ impl<'a> SolutionBuilder<'a> {
     pub fn build(&self) -> Result<[Solution; 2], BuildError> {
         if self.words.len() == 5 {
             Ok([
-                Solution::new(vec!["ghost", "route", "inter", "modes", "erode"]),
-                Solution::new(vec!["grime", "honor", "outdo", "steed", "terse"]),
+                Solution::new(self.words.clone()),
+                Solution::new(self.columns()),
             ])
         } else {
             Err(BuildError::Incomplete)
