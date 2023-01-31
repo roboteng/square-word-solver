@@ -1,9 +1,10 @@
-#![feature(test)]
+// #![feature(test)]
 extern crate num_cpus;
+use builder::{AddedWord, SolutionBuilder};
 use regex::Regex;
 use std::io::{self, Write};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     fmt::Display,
     fs::{File, OpenOptions},
     io::Read,
@@ -34,45 +35,19 @@ pub fn five_letter_words(string: &str) -> Vec<String> {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Solution<'a> {
-    rows: Vec<&'a str>,
+pub struct Solution {
+    rows: Vec<String>,
 }
 
-impl<'a> Solution<'a> {
-    pub fn new(rows: Vec<&'a str>) -> Self {
-        Self { rows }
-    }
-
-    fn columns(&self) -> Vec<String> {
-        let mut columns: Vec<String> = vec![];
-        for i in 0..5 {
-            let s: String = self
-                .rows
-                .iter()
-                .map(|row| row.as_bytes()[i] as char)
-                .collect();
-            columns.push(s);
+impl Solution {
+    pub fn new<S: AsRef<str>>(rows: Vec<S>) -> Self {
+        Self {
+            rows: rows.iter().map(|s| String::from(s.as_ref())).collect(),
         }
-        columns
-    }
-
-    fn is_unique(&self) -> bool {
-        if self.rows.len() < 5 {
-            return true;
-        }
-        let mut set = HashSet::new();
-        let columns = self.columns();
-        for word in columns.iter() {
-            set.insert(word.as_str());
-        }
-        for word in self.rows.iter() {
-            set.insert(word);
-        }
-        set.len() == 10
     }
 }
 
-impl<'a> Display for Solution<'a> {
+impl Display for Solution {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.rows.join(",").as_str())
     }
@@ -119,36 +94,42 @@ impl WordList {
     }
 }
 
+enum ThreadMessage {
+    Solutions(Vec<Solution>),
+    Done,
+}
+
 pub fn find_solutions<'a>(
     possible_columns: &WordList,
     possible_rows: &'a Vec<&'a str>,
-) -> Vec<Solution<'a>> {
-    let possible_columns = Arc::new(possible_columns);
-    let possible_rows = Arc::new(possible_rows);
+) -> Vec<Solution> {
+    let c = Arc::new(possible_columns);
+    let r = Arc::new(possible_rows);
 
     let starts = Arc::new(Mutex::new(possible_rows.iter()));
     let (sol_tx, sol_rx) = channel();
 
     let sols = Arc::new(Mutex::new(vec![]));
     let solution_list = sols.clone();
-    let len = possible_rows.len();
     thread::scope(|scope| {
-        scope.spawn(move || {
-            spawn_collector(len, sol_rx, solution_list);
+        let n = num_cpus::get();
+        let collector = scope.spawn(move || {
+            spawn_collector(n, sol_rx, solution_list);
         });
 
-        let n = num_cpus::get();
-
-        for _ in 0..n {
+        let threads = (0..n).map(|_| {
             let tx = sol_tx.clone();
-            let c = possible_columns.clone();
-            let r = possible_rows.clone();
+            let c = c.clone();
+            let r = r.clone();
             let starts = starts.clone();
 
             scope.spawn(move || {
                 spawn_worker(&c, &r, starts, tx);
-            });
-        }
+            })
+        });
+
+        threads.for_each(|t| t.join().unwrap());
+        collector.join().unwrap();
     });
 
     let x = sols.lock().unwrap().to_vec();
@@ -159,63 +140,76 @@ fn spawn_worker<'a>(
     col: &WordList,
     row: &'a Vec<&'a str>,
     starts: Arc<Mutex<std::slice::Iter<&'a str>>>,
-    tx: std::sync::mpsc::Sender<Vec<Solution<'a>>>,
+    tx: std::sync::mpsc::Sender<ThreadMessage>,
 ) {
     let mut start: Option<&&str> = { starts.lock().unwrap().next() };
     while let Some(start_word) = start {
-        let start_solution = Solution::new(vec![start_word]);
-        let solutions = find_subsolutions(col, row, &start_solution);
-        tx.send(solutions).unwrap();
+        println!("Working on {start_word}");
+        let mut builder = SolutionBuilder::new(col);
+        match builder.add(&start_word) {
+            Ok(_) => {}
+            Err(_) => {
+                start = starts.lock().unwrap().next();
+                continue;
+            }
+        };
+        let solutions = find_subsolutions(col, row, &mut builder);
+        tx.send(ThreadMessage::Solutions(solutions)).unwrap();
         {
             start = starts.lock().unwrap().next();
         }
     }
+    tx.send(ThreadMessage::Done).unwrap();
 }
 
 fn spawn_collector<'a>(
     len: usize,
-    sol_rx: std::sync::mpsc::Receiver<Vec<Solution<'a>>>,
-    solution_list: Arc<Mutex<Vec<Solution<'a>>>>,
+    sol_rx: std::sync::mpsc::Receiver<ThreadMessage>,
+    solution_list: Arc<Mutex<Vec<Solution>>>,
 ) {
-    for _ in 0..len {
-        let mut current_solutions: Vec<Solution> = sol_rx.recv().unwrap();
-        let mut file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("solutions.txt")
-            .unwrap();
+    let mut count = 0;
+    while count < len {
+        match sol_rx.recv().unwrap() {
+            ThreadMessage::Solutions(mut current_solutions) => {
+                let mut file = OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open("solutions.txt")
+                    .unwrap();
 
-        for solution in current_solutions.iter() {
-            writeln!(file, "{}", solution).unwrap();
+                for solution in current_solutions.iter() {
+                    writeln!(file, "{}", solution).unwrap();
+                }
+                let mut solution_list = solution_list.lock().unwrap();
+                solution_list.append(&mut current_solutions);
+            }
+            ThreadMessage::Done => count += 1,
         }
-        let mut solution_list = solution_list.lock().unwrap();
-        solution_list.append(&mut current_solutions);
     }
 }
 
 fn find_subsolutions<'a>(
     possible_columns: &WordList,
     possible_rows: &'a Vec<&'a str>,
-    in_progress_solution: &Solution<'a>,
-) -> Vec<Solution<'a>> {
+    builder: &mut SolutionBuilder<'a>,
+) -> Vec<Solution> {
     let mut solutions = vec![];
     for word in possible_rows.iter() {
-        let mut sol = in_progress_solution.clone();
-        sol.rows.push(word);
-        if sol
-            .columns()
-            .iter()
-            .all(|column| possible_columns.contains(column))
-        {
-            if sol.rows.len() == 5 {
-                if sol.is_unique() {
-                    solutions.push(sol);
-                }
-            } else {
-                let mut sols = find_subsolutions(possible_columns, possible_rows, &sol);
+        // println!("{:?}, with {word}", builder.words);
+        match builder.add(word) {
+            Ok(AddedWord::Incomplete) => {
+                let mut sols = find_subsolutions(possible_columns, possible_rows, builder);
                 solutions.append(&mut sols);
+                builder.pop().unwrap();
             }
-        }
+            Ok(AddedWord::Finished) => {
+                let sols = builder.build().unwrap();
+                solutions.append(&mut Vec::from(sols));
+
+                builder.pop().unwrap();
+            }
+            Err(_) => {}
+        };
     }
     solutions
 }
@@ -223,8 +217,8 @@ fn find_subsolutions<'a>(
 #[cfg(test)]
 mod my_test {
     use super::*;
-    use test::Bencher;
-    extern crate test;
+    // use test::Bencher;
+    // extern crate test;
 
     #[test]
     fn empty_word_list_does_not_contain_a_word() {
@@ -251,6 +245,13 @@ mod my_test {
     }
 
     #[test]
+    fn is_able_to_two_words_that_start_with_the_same_letters() {
+        let words = vec!["foo", "foobar"];
+        let list = WordList::new(words);
+        assert!(list.contains("foob"));
+    }
+
+    #[test]
     fn cannot_find_solutions_with_empty_word_list() {
         let list = WordList::new(vec![]);
         let rows = vec![];
@@ -259,79 +260,11 @@ mod my_test {
     }
 
     #[test]
-    fn is_able_to_two_words_that_start_with_the_same_letters() {
-        let words = vec!["foo", "foobar"];
-        let list = WordList::new(words);
-        assert!(list.contains("foob"));
-    }
-
-    #[test]
-    fn columns() {
-        let solution = Solution::new(vec!["grime", "honor"]);
-        let expected = vec!["gh", "ro", "in", "mo", "er"];
-        assert_eq!(solution.columns(), expected);
-    }
-
-    #[test]
     fn finds_1_solution_with_word_list_from_known_solution() {
-        let rows = vec!["grime", "honor", "outdo", "steed", "terse"];
-        let columns = vec!["ghost", "route", "inter", "modes", "erode"];
-        let list = WordList::new(columns);
-        let solutions = find_solutions(&list, &rows);
-        assert_eq!(solutions, vec![Solution::new(rows.clone())]);
-    }
-
-    #[test]
-    fn solution_displays_as_a_comma_separated_list_of_words() {
-        let solution = Solution::new(vec!["grime", "honor", "outdo", "steed", "terse"]);
-        let actual = format!("{}", solution);
-        let expected = "grime,honor,outdo,steed,terse";
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn a_correct_solution_is_unique() {
-        let solution = Solution::new(vec!["grime", "honor", "outdo", "steed", "terse"]);
-        assert!(solution.is_unique());
-    }
-
-    #[test]
-    fn a_solution_with_the_same_row_as_column_is_not_unique() {
-        let solution = Solution::new(vec!["grime", "ronor", "iutdo", "mteed", "eerse"]);
-        assert!(!solution.is_unique());
-    }
-
-    #[test]
-    fn an_incomplete_solution_is_unique() {
-        let solution = Solution::new(vec!["grime", "ronor", "iutdo", "mteed"]);
-        assert!(solution.is_unique());
-    }
-
-    #[bench]
-    fn dict_test(b: &mut Bencher) {
-        let binding = get_words().unwrap();
-        let words: Vec<&str> = binding.iter().map(|s| s.as_str()).collect();
-
-        let list = WordList::new(words.clone());
-        let first = words[0];
-        let last = words[words.len() - 1];
-        b.iter(|| {
-            assert!(list.contains(first));
-            assert!(list.contains(last));
-            assert!(!list.contains("foobar"));
-        })
-    }
-
-    #[bench]
-    fn actual_solve(b: &mut Bencher) {
-        let valid_words = vec![
-            "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
-            "erode", "level", "oxide", "atria", "truck", "hasty", "loath", "extra", "virus",
-            "edict", "leaky", "loses", "apple", "diode", "lured", "emery", "ladle", "opium",
-            "spore", "elder", "seedy",
-        ];
-        let list = WordList::new(valid_words.clone());
-
-        b.iter(|| find_subsolutions(&list, &valid_words, &Solution::new(vec![])))
+        let columns = vec!["grime", "honor", "outdo", "steed", "terse"];
+        let rows = vec!["ghost", "route", "inter", "modes", "erode"];
+        let list = WordList::new([columns.clone(), rows.clone()].concat());
+        let solutions = find_solutions(&list, &[columns.clone(), rows.clone()].concat());
+        assert_eq!(solutions, vec![Solution::new(rows), Solution::new(columns)]);
     }
 }

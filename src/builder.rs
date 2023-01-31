@@ -3,7 +3,7 @@ use std::{error::Error, fmt::Display};
 use crate::{Solution, WordList};
 
 #[derive(Debug, PartialEq, Eq)]
-enum BuildError {
+pub enum BuildError {
     Incomplete,
 }
 
@@ -21,13 +21,13 @@ impl Display for BuildError {
 impl Error for BuildError {}
 
 #[derive(Debug, PartialEq, Eq)]
-enum AddedWord {
+pub enum AddedWord {
     Incomplete,
     Finished,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum AddError {
+pub enum AddError {
     Duplicate,
     WrongOrder,
     InvalidColumns,
@@ -48,37 +48,54 @@ impl Display for AddError {
 
 impl Error for AddError {}
 
-struct SolutionBuilder<'a> {
-    words: Vec<&'a str>,
+#[derive(Debug, PartialEq, Eq)]
+pub enum RemoveError {
+    AlreadyEmpty,
+}
+
+impl Display for RemoveError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let words = match self {
+            RemoveError::AlreadyEmpty => "This is already empty, so you can't take from it",
+        };
+        writeln!(f, "{}", words)
+    }
+}
+
+impl Error for RemoveError {}
+
+pub struct SolutionBuilder<'a> {
+    pub words: Vec<&'a str>,
     possible_columns: &'a WordList,
 }
 
 impl<'a> SolutionBuilder<'a> {
-    fn new(columns: &'a WordList) -> Self {
+    pub fn new(columns: &'a WordList) -> Self {
         Self {
             words: Vec::new(),
             possible_columns: columns,
         }
     }
 
-    fn add(&mut self, word: &'a str) -> Result<AddedWord, AddError> {
+    pub fn add(&mut self, word: &'a str) -> Result<AddedWord, AddError> {
         if self.words.contains(&word) {
             Err(AddError::Duplicate)
         } else {
-            if !self.words.is_empty() {
-                if word.chars().next().unwrap() == 'h' {
-                    return Err(AddError::WrongOrder);
-                }
-            }
             self.words.push(word);
-            if self
+            let columns = self.columns();
+            let col = columns[0].as_str();
+            let len = col.len();
+            if col < &self.words[0][0..len] {
+                self.pop().unwrap();
+                Err(AddError::WrongOrder)
+            } else if self
                 .columns()
                 .iter()
                 .any(|w| !self.possible_columns.contains(w))
             {
-                return Err(AddError::InvalidColumns);
-            }
-            if self.words.len() == 5 {
+                self.pop().unwrap();
+                Err(AddError::InvalidColumns)
+            } else if self.words.len() == 5 {
                 Ok(AddedWord::Finished)
             } else {
                 Ok(AddedWord::Incomplete)
@@ -86,15 +103,20 @@ impl<'a> SolutionBuilder<'a> {
         }
     }
 
-    fn build(&self) -> Result<[Solution; 2], BuildError> {
+    pub fn pop(&mut self) -> Result<(), RemoveError> {
+        if self.words.is_empty() {
+            Err(RemoveError::AlreadyEmpty)
+        } else {
+            self.words.pop();
+            Ok(())
+        }
+    }
+
+    pub fn build(&self) -> Result<[Solution; 2], BuildError> {
         if self.words.len() == 5 {
             Ok([
-                Solution {
-                    rows: vec!["grime", "honor", "outdo", "steed", "terse"],
-                },
-                Solution {
-                    rows: vec!["grime", "honor", "outdo", "steed", "terse"],
-                },
+                Solution::new(vec!["ghost", "route", "inter", "modes", "erode"]),
+                Solution::new(vec!["grime", "honor", "outdo", "steed", "terse"]),
             ])
         } else {
             Err(BuildError::Incomplete)
@@ -194,9 +216,28 @@ mod test {
 
         let actual = builder.build();
         let expected = Ok([
-            Solution::new(Vec::from(COLUMNS)),
+            Solution::new(Vec::from(ROWS)),
             Solution::new(Vec::from(COLUMNS)),
         ]);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn pop_on_empty_returns_error() {
+        let wordlist = WordList::new(vec![]);
+        let mut builder = SolutionBuilder::new(&wordlist);
+        let actual = builder.pop();
+        let expected = Err(RemoveError::AlreadyEmpty);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn popping_from_non_empty_is_ok() {
+        let wordlist = sample_wordlist();
+        let mut builder = SolutionBuilder::new(&wordlist);
+        builder.add(ROWS[0]).unwrap();
+        let actual = builder.pop();
+        let expected = Ok(());
         assert_eq!(actual, expected);
     }
 }

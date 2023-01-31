@@ -1,14 +1,20 @@
 use crate::Solution;
 
-struct Puzzle<'a> {
-    solution: Solution<'a>,
+struct Puzzle {
+    solution: Solution,
     guesses: Vec<[char; 5]>,
 }
 
-impl Puzzle<'_> {
+impl Puzzle {
     fn new(solution: Solution) -> Self {
         Self {
-            solution: Solution::new(vec!["grime", "honor", "outdo", "steed", "terse"]),
+            solution: Solution::new(vec![
+                String::from("grime"),
+                String::from("honor"),
+                String::from("outdo"),
+                String::from("steed"),
+                String::from("terse"),
+            ]),
             guesses: Vec::new(),
         }
     }
