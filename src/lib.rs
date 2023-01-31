@@ -1,9 +1,7 @@
 #![feature(test)]
-pub mod solver;
 extern crate num_cpus;
-extern crate test;
 use regex::Regex;
-use std::io::Write;
+use std::io::{self, Write};
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
@@ -14,15 +12,16 @@ use std::{
     thread,
 };
 
-pub fn get_words() -> Vec<String> {
+mod builder;
+mod solver;
+
+pub fn get_words() -> Result<Vec<String>, io::Error> {
     let path = Path::new("words.txt");
-    let mut file = match File::open(path) {
-        Ok(file) => file,
-        Err(err) => panic!("Couldn't open {:?} because {}", path, err),
-    };
+    let mut file = File::open(path)?;
+
     let mut buffer = String::new();
-    file.read_to_string(&mut buffer).unwrap();
-    five_letter_words(&buffer)
+    file.read_to_string(&mut buffer)?;
+    Ok(five_letter_words(&buffer))
 }
 
 pub fn five_letter_words(string: &str) -> Vec<String> {
@@ -124,8 +123,8 @@ pub fn find_solutions<'a>(
     possible_columns: &WordList,
     possible_rows: &'a Vec<&'a str>,
 ) -> Vec<Solution<'a>> {
-    let c = Arc::new(possible_columns);
-    let r = Arc::new(possible_rows);
+    let possible_columns = Arc::new(possible_columns);
+    let possible_rows = Arc::new(possible_rows);
 
     let starts = Arc::new(Mutex::new(possible_rows.iter()));
     let (sol_tx, sol_rx) = channel();
@@ -142,8 +141,8 @@ pub fn find_solutions<'a>(
 
         for _ in 0..n {
             let tx = sol_tx.clone();
-            let c = c.clone();
-            let r = r.clone();
+            let c = possible_columns.clone();
+            let r = possible_rows.clone();
             let starts = starts.clone();
 
             scope.spawn(move || {
@@ -222,9 +221,10 @@ fn find_subsolutions<'a>(
 }
 
 #[cfg(test)]
-mod test2 {
+mod my_test {
     use super::*;
     use test::Bencher;
+    extern crate test;
 
     #[test]
     fn empty_word_list_does_not_contain_a_word() {
@@ -309,7 +309,7 @@ mod test2 {
 
     #[bench]
     fn dict_test(b: &mut Bencher) {
-        let binding = get_words();
+        let binding = get_words().unwrap();
         let words: Vec<&str> = binding.iter().map(|s| s.as_str()).collect();
 
         let list = WordList::new(words.clone());

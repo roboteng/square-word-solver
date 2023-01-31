@@ -1,7 +1,7 @@
 use square_word::*;
 
 fn main() {
-    let valid_words = get_words();
+    let valid_words = get_words().unwrap();
     let valid_words: Vec<&str> = valid_words.iter().map(|s| s.as_str()).collect();
 
     println!("{:?}", valid_words);
