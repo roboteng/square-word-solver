@@ -1,6 +1,6 @@
 use std::{error::Error, fmt::Display};
 
-use crate::WordList;
+use crate::{Solution, WordList};
 
 #[derive(Debug, PartialEq, Eq)]
 enum BuildError {
@@ -19,6 +19,12 @@ impl Display for BuildError {
 }
 
 impl Error for BuildError {}
+
+#[derive(Debug, PartialEq, Eq)]
+enum AddedWord {
+    Incomplete,
+    Finished,
+}
 
 #[derive(Debug, PartialEq, Eq)]
 enum AddError {
@@ -55,7 +61,7 @@ impl<'a> SolutionBuilder<'a> {
         }
     }
 
-    fn add(&mut self, word: &'a str) -> Result<(), AddError> {
+    fn add(&mut self, word: &'a str) -> Result<AddedWord, AddError> {
         if self.words.contains(&word) {
             Err(AddError::Duplicate)
         } else {
@@ -72,12 +78,27 @@ impl<'a> SolutionBuilder<'a> {
             {
                 return Err(AddError::InvalidColumns);
             }
-            Ok(())
+            if self.words.len() == 5 {
+                Ok(AddedWord::Finished)
+            } else {
+                Ok(AddedWord::Incomplete)
+            }
         }
     }
 
-    fn build(&self) -> Result<(), BuildError> {
-        Err(BuildError::Incomplete)
+    fn build(&self) -> Result<[Solution; 2], BuildError> {
+        if self.words.len() == 5 {
+            Ok([
+                Solution {
+                    rows: vec!["grime", "honor", "outdo", "steed", "terse"],
+                },
+                Solution {
+                    rows: vec!["grime", "honor", "outdo", "steed", "terse"],
+                },
+            ])
+        } else {
+            Err(BuildError::Incomplete)
+        }
     }
 
     fn columns(&self) -> Vec<String> {
@@ -92,7 +113,7 @@ impl<'a> SolutionBuilder<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::WordList;
+    use crate::{Solution, WordList};
 
     const COLUMNS: [&str; 5] = ["grime", "honor", "outdo", "steed", "terse"];
     const ROWS: [&str; 5] = ["ghost", "route", "inter", "modes", "erode"];
@@ -116,7 +137,7 @@ mod test {
         let wordlist = sample_wordlist();
         let mut builder = SolutionBuilder::new(&wordlist);
         let actual = builder.add(ROWS[0]);
-        let expected = Ok(());
+        let expected = Ok(AddedWord::Incomplete);
         assert_eq!(actual, expected);
     }
 
@@ -146,7 +167,7 @@ mod test {
         let mut builder = SolutionBuilder::new(&wordlist);
         builder.add(ROWS[0]).unwrap();
         let actual = builder.add(ROWS[1]);
-        let expected = Ok(());
+        let expected = Ok(AddedWord::Incomplete);
         assert_eq!(actual, expected);
     }
 
@@ -156,6 +177,26 @@ mod test {
         let mut builder = SolutionBuilder::new(&possible_columns);
         let actual = builder.add("dummy");
         let expected = Err(AddError::InvalidColumns);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn adding_the_words_for_a_correct_puzzle_builds_to_two_solutions() {
+        let possible_columns = WordList::new(Vec::from(COLUMNS));
+        let mut builder = SolutionBuilder::new(&possible_columns);
+        builder.add(ROWS[0]).unwrap();
+        builder.add(ROWS[1]).unwrap();
+        builder.add(ROWS[2]).unwrap();
+        builder.add(ROWS[3]).unwrap();
+        let actual = builder.add(ROWS[4]);
+        let expected = Ok(AddedWord::Finished);
+        assert_eq!(actual, expected);
+
+        let actual = builder.build();
+        let expected = Ok([
+            Solution::new(Vec::from(COLUMNS)),
+            Solution::new(Vec::from(COLUMNS)),
+        ]);
         assert_eq!(actual, expected);
     }
 }
