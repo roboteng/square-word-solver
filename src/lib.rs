@@ -17,7 +17,7 @@ mod builder;
 mod solver;
 
 pub fn get_words() -> Result<Vec<String>, io::Error> {
-    let path = Path::new("/usr/share/dict/words");
+    let path = Path::new("words.txt");
     let mut file = File::open(path)?;
 
     let mut buffer = String::new();
@@ -199,7 +199,6 @@ fn find_subsolutions<'a>(
 ) -> Vec<Solution> {
     let mut solutions = vec![];
     for word in possible_rows.iter() {
-        // println!("{:?}, with {word}", builder.words);
         match builder.add(word) {
             Ok(AddedWord::Incomplete) => {
                 let mut sols = find_subsolutions(possible_columns, possible_rows, builder);
@@ -209,7 +208,6 @@ fn find_subsolutions<'a>(
             Ok(AddedWord::Finished) => {
                 let sols = builder.build().unwrap();
                 solutions.append(&mut Vec::from(sols));
-
                 builder.pop().unwrap();
             }
             Err(_) => {}

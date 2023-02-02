@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Display};
+use std::{collections::HashSet, error::Error, fmt::Display};
 
 use crate::{Solution, WordList};
 
@@ -31,6 +31,7 @@ pub enum AddError {
     Duplicate,
     WrongOrder,
     InvalidColumns,
+    FinishedDuplicate,
 }
 
 impl Display for AddError {
@@ -41,6 +42,7 @@ impl Display for AddError {
             AddError::InvalidColumns => {
                 "There are no possible valid solutions if this words were to be added"
             }
+            AddError::FinishedDuplicate => "By finishing this, a duplicate would be created",
         };
         writeln!(f, "{}", words)
     }
@@ -96,7 +98,17 @@ impl<'a> SolutionBuilder<'a> {
                 self.pop().unwrap();
                 Err(AddError::InvalidColumns)
             } else if self.words.len() == 5 {
-                Ok(AddedWord::Finished)
+                let words = [
+                    self.words.iter().map(|s| s.to_string()).collect(),
+                    self.columns(),
+                ]
+                .concat();
+                let set: HashSet<&String> = HashSet::from_iter(words.iter());
+                if set.len() == 10 {
+                    Ok(AddedWord::Finished)
+                } else {
+                    Err(AddError::FinishedDuplicate)
+                }
             } else {
                 Ok(AddedWord::Incomplete)
             }
@@ -238,6 +250,30 @@ mod test {
         builder.add(ROWS[0]).unwrap();
         let actual = builder.pop();
         let expected = Ok(());
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn solutions_should_not_have_duplicate_words() {
+        fn fails() -> Result<(), AddError> {
+            // contains hydra twice
+            let words: Vec<&str> = "which,hydra,odium,arose,sates,whoas,hydra,idiot,cruse,hames"
+                .split(",")
+                .collect();
+            let list = WordList::new(words);
+            let mut builder = SolutionBuilder::new(&list);
+
+            builder.add("which")?;
+            builder.add("hydra")?;
+            builder.add("odium")?;
+            builder.add("arose")?;
+            builder.add("sates")?;
+
+            Ok(())
+        }
+
+        let actual = fails();
+        let expected = Err(AddError::FinishedDuplicate);
         assert_eq!(actual, expected);
     }
 }
