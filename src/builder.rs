@@ -23,7 +23,7 @@ impl Error for BuildError {}
 #[derive(Debug, PartialEq, Eq)]
 pub enum AddedWord {
     Incomplete,
-    Finished,
+    Finished([Solution; 2]),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -110,7 +110,7 @@ impl<'a> SolutionBuilder<'a> {
                 .concat();
                 let set: HashSet<&String> = HashSet::from_iter(words.iter());
                 if set.len() == 10 {
-                    Ok(AddedWord::Finished)
+                    Ok(AddedWord::Finished(self.build().unwrap()))
                 } else {
                     Err(AddError::FinishedDuplicate)
                 }
@@ -129,7 +129,7 @@ impl<'a> SolutionBuilder<'a> {
         }
     }
 
-    pub fn build(&self) -> Result<[Solution; 2], BuildError> {
+    fn build(&self) -> Result<[Solution; 2], BuildError> {
         if self.words.len() == 5 {
             Ok([
                 Solution::new(self.words.clone()),
@@ -162,14 +162,6 @@ mod test {
     }
 
     use super::*;
-    #[test]
-    fn an_empty_builder_produces_an_error() {
-        let wordlist = sample_wordlist();
-        let builder = SolutionBuilder::new(&wordlist);
-        let expected = Err(BuildError::Incomplete);
-        let actual = builder.build();
-        assert_eq!(actual, expected);
-    }
 
     #[test]
     fn adding_five_letter_word_works() {
@@ -228,14 +220,10 @@ mod test {
         builder.add(ROWS[2]).unwrap();
         builder.add(ROWS[3]).unwrap();
         let actual = builder.add(ROWS[4]);
-        let expected = Ok(AddedWord::Finished);
-        assert_eq!(actual, expected);
-
-        let actual = builder.build();
-        let expected = Ok([
-            Solution::new(Vec::from(ROWS)),
-            Solution::new(Vec::from(COLUMNS)),
-        ]);
+        let expected = Ok(AddedWord::Finished([
+            Solution::new(ROWS.to_vec()),
+            Solution::new(COLUMNS.to_vec()),
+        ]));
         assert_eq!(actual, expected);
     }
 

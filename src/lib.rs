@@ -205,8 +205,7 @@ fn find_subsolutions<'a>(
                 solutions.append(&mut sols);
                 builder.pop().unwrap();
             }
-            Ok(AddedWord::Finished) => {
-                let sols = builder.build().unwrap();
+            Ok(AddedWord::Finished(sols)) => {
                 solutions.append(&mut Vec::from(sols));
                 builder.pop().unwrap();
             }
