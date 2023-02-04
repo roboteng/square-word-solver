@@ -7,7 +7,7 @@ This does not solve any actual puzzles yet, but that will come.
 
 ## Running
 
-`cargo build --release && ./target/release/square-word`
+`cargo run --release`
 
 ## Running the tests
 

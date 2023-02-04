@@ -32,6 +32,7 @@ pub enum AddError {
     WrongOrder,
     InvalidColumns,
     FinishedDuplicate,
+    TooManyRows,
 }
 
 impl Display for AddError {
@@ -43,6 +44,7 @@ impl Display for AddError {
                 "There are no possible valid solutions if this words were to be added"
             }
             AddError::FinishedDuplicate => "By finishing this, a duplicate would be created",
+            AddError::TooManyRows => "More than 5 rows have been added",
         };
         writeln!(f, "{}", words)
     }
@@ -87,6 +89,9 @@ impl<'a> SolutionBuilder<'a> {
             let columns = self.columns();
             let col = columns[0].as_str();
             let len = col.len();
+            if len > 5 {
+                return Err(AddError::TooManyRows);
+            }
             if col < &self.words[0][0..len] {
                 self.pop().unwrap();
                 Err(AddError::WrongOrder)
@@ -274,6 +279,20 @@ mod test {
 
         let actual = fails();
         let expected = Err(AddError::FinishedDuplicate);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn adding_to_a_full_solution_gives_an_error() {
+        let possible_columns = WordList::new(Vec::from(COLUMNS));
+        let mut builder = SolutionBuilder::new(&possible_columns);
+        builder.add(ROWS[0]).unwrap();
+        builder.add(ROWS[1]).unwrap();
+        builder.add(ROWS[2]).unwrap();
+        builder.add(ROWS[3]).unwrap();
+        builder.add(ROWS[4]).unwrap();
+        let actual = builder.add("place");
+        let expected = Err(AddError::TooManyRows);
         assert_eq!(actual, expected);
     }
 }
