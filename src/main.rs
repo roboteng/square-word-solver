@@ -6,5 +6,5 @@ fn main() {
 
     let list = WordList::new(valid_words.clone());
     let solutions = find_solutions(&list, &valid_words);
-    println!("{:?}", solutions);
+    println!("{solutions:?}");
 }

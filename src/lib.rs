@@ -150,14 +150,14 @@ fn spawn_worker<'a>(
     while let Some(start_word) = start {
         println!("Working on {start_word}");
         let mut builder = SolutionBuilder::new(col);
-        match builder.add(&start_word) {
+        match builder.add(start_word) {
             Ok(_) => {}
             Err(_) => {
                 start = starts.lock().unwrap().next();
                 continue;
             }
         };
-        let solutions = find_subsolutions(col, row, &mut builder);
+        let solutions = find_subsolutions(row, &mut builder);
         tx.send(ThreadMessage::Solutions(solutions)).unwrap();
         {
             start = starts.lock().unwrap().next();
@@ -166,7 +166,7 @@ fn spawn_worker<'a>(
     tx.send(ThreadMessage::Done).unwrap();
 }
 
-fn spawn_collector<'a>(
+fn spawn_collector(
     len: usize,
     sol_rx: std::sync::mpsc::Receiver<ThreadMessage>,
     solution_list: Arc<Mutex<Vec<Solution>>>,
@@ -182,7 +182,7 @@ fn spawn_collector<'a>(
                     .unwrap();
 
                 for solution in current_solutions.iter() {
-                    writeln!(file, "{}", solution).unwrap();
+                    writeln!(file, "{solution}").unwrap();
                 }
                 let mut solution_list = solution_list.lock().unwrap();
                 solution_list.append(&mut current_solutions);
@@ -193,7 +193,6 @@ fn spawn_collector<'a>(
 }
 
 fn find_subsolutions<'a>(
-    possible_columns: &WordList,
     possible_rows: &'a Vec<&'a str>,
     builder: &mut SolutionBuilder<'a>,
 ) -> Vec<Solution> {
@@ -201,7 +200,7 @@ fn find_subsolutions<'a>(
     for word in possible_rows.iter() {
         match builder.add(word) {
             Ok(AddedWord::Incomplete) => {
-                let mut sols = find_subsolutions(possible_columns, possible_rows, builder);
+                let mut sols = find_subsolutions(possible_rows, builder);
                 solutions.append(&mut sols);
                 builder.pop().unwrap();
             }
@@ -294,6 +293,6 @@ mod my_test {
         ];
         let list = WordList::new(valid_words.clone());
 
-        b.iter(|| find_subsolutions(&list, &valid_words, &mut SolutionBuilder::new(&list)))
+        b.iter(|| find_subsolutions(&valid_words, &mut SolutionBuilder::new(&list)))
     }
 }

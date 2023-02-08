@@ -14,7 +14,7 @@ impl Display for BuildError {
                 "Not enough words have been added to this builder, 5 are needed"
             }
         };
-        writeln!(f, "{}", words)
+        writeln!(f, "{words}")
     }
 }
 
@@ -46,7 +46,7 @@ impl Display for AddError {
             AddError::FinishedDuplicate => "By finishing this, a duplicate would be created",
             AddError::TooManyRows => "More than 5 rows have been added",
         };
-        writeln!(f, "{}", words)
+        writeln!(f, "{words}")
     }
 }
 
@@ -62,7 +62,7 @@ impl Display for RemoveError {
         let words = match self {
             RemoveError::AlreadyEmpty => "This is already empty, so you can't take from it",
         };
-        writeln!(f, "{}", words)
+        writeln!(f, "{words}")
     }
 }
 

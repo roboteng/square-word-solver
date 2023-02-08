@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::collections::BTreeMap;
 
 use ascii::{AsciiChar, AsciiString};
@@ -88,7 +90,7 @@ impl Puzzle {
 }
 
 #[derive(Debug, PartialEq, Eq, Default)]
-struct PuzzleViewModel {
+pub struct PuzzleViewModel {
     guesses: Vec<AsciiString>,
     is_finished: bool,
     grid: [[Option<AsciiChar>; 5]; 5],
