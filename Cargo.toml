@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 regex = "1"
 num_cpus = "1.0"
+ascii = "1.1.0"
