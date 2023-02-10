@@ -16,9 +16,9 @@ use std::{
 };
 
 mod builder;
-mod solver;
+pub mod solver;
 
-pub fn get_words() -> Result<Vec<String>, io::Error> {
+pub fn dget_words() -> Result<Vec<String>, io::Error> {
     let path = Path::new("words.txt");
     let mut file = File::open(path)?;
 

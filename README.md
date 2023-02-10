@@ -7,7 +7,13 @@ This does not solve any actual puzzles yet, but that will come.
 
 ## Running
 
-`cargo run --release`
+To find solutions based on the word list you can run:
+
+`cargo run --bin solve --release`
+
+To play a game once solutions have been created run:
+
+`cargo run --bin play`
 
 ## Running the tests
 

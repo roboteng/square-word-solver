@@ -6,7 +6,7 @@ use ascii::{AsciiChar, AsciiString};
 use crate::Solution;
 
 #[derive(Debug, PartialEq, Eq)]
-enum LetterPlayed {
+pub enum LetterPlayed {
     NotPlayed,
     NotInSolution,
     PartiallyUsed,
@@ -143,11 +143,11 @@ fn row_hint(
 
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct PuzzleViewModel {
-    guesses: Vec<AsciiString>,
-    is_finished: bool,
-    grid: [[Option<AsciiChar>; 5]; 5],
-    hints: [AsciiString; 5],
-    alphabet: BTreeMap<AsciiChar, LetterPlayed>,
+    pub guesses: Vec<AsciiString>,
+    pub is_finished: bool,
+    pub grid: [[Option<AsciiChar>; 5]; 5],
+    pub hints: [AsciiString; 5],
+    pub alphabet: BTreeMap<AsciiChar, LetterPlayed>,
 }
 
 #[cfg(test)]
