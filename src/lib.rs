@@ -1,5 +1,7 @@
 #![feature(test)]
+#![feature(iter_intersperse)]
 extern crate num_cpus;
+use ascii::AsciiString;
 use builder::{AddedWord, SolutionBuilder};
 use regex::Regex;
 use std::io::{self, Write};
@@ -36,20 +38,30 @@ pub fn five_letter_words(string: &str) -> Vec<String> {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Solution {
-    rows: Vec<String>,
+    rows: Vec<AsciiString>,
 }
 
 impl Solution {
     pub fn new<S: AsRef<str>>(rows: Vec<S>) -> Self {
         Self {
-            rows: rows.iter().map(|s| String::from(s.as_ref())).collect(),
+            rows: rows
+                .iter()
+                .map(|s| AsciiString::from_ascii(s.as_ref()).unwrap())
+                .collect(),
         }
     }
 }
 
 impl Display for Solution {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.rows.join(",").as_str())
+        f.write_str(
+            &self
+                .rows
+                .iter()
+                .map(|s| String::from(s.clone()))
+                .intersperse(String::from(","))
+                .collect::<String>(),
+        )
     }
 }
 
