@@ -6,17 +6,17 @@ use square_word::{solver::Puzzle, Solution};
 fn main() {
     let lines = read_to_string("./solutions.txt").unwrap();
     let lines = lines.lines().collect::<Vec<_>>();
-    let words = lines[0].split(",").collect::<Vec<_>>();
+    let words = lines[0].split(',').collect::<Vec<_>>();
     let sol = Solution::new(words);
     let mut puzzle = Puzzle::new(sol);
     let mut vm = puzzle.view();
     let stdin = stdin();
     while !vm.is_finished {
-        println!("");
+        println!();
 
         println!("Guesses: {}", vm.guesses.len());
         println!("##########");
-        let grid = vm.grid.clone();
+        let grid = vm.grid;
         let rows = grid.iter().zip(vm.hints.clone()).map(|(row, hints)| {
             let row = row
                 .map(|c| match c {
@@ -34,7 +34,7 @@ fn main() {
         let guess = match stdin.read_line(&mut buffer) {
             Ok(_) => {
                 let guess = buffer.trim().to_string();
-                let guess = match AsciiString::from_ascii(guess) {
+                match AsciiString::from_ascii(guess) {
                     Ok(g) => {
                         if g.len() == 5 {
                             g
@@ -47,8 +47,7 @@ fn main() {
                         println!("C'mon now, just regular letters");
                         continue;
                     }
-                };
-                guess
+                }
             }
             Err(_) => {
                 println!("sorry, come again?");

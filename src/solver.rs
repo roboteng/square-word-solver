@@ -80,16 +80,14 @@ impl Puzzle {
             .solution
             .rows
             .iter()
-            .map(|word| word.chars())
-            .flatten()
+            .flat_map(|word| word.chars())
             .collect::<Vec<_>>();
         let hint_letters = hints
             .iter()
-            .map(|word| word.chars())
-            .flatten()
+            .flat_map(|word| word.chars())
             .collect::<Vec<_>>();
-        for letter in self.guesses.iter().map(|word| word.chars()).flatten() {
-            if grid_letters.contains(&&letter) {
+        for letter in self.guesses.iter().flat_map(|word| word.chars()) {
+            if grid_letters.contains(&letter) {
                 if hint_letters.contains(&letter) {
                     dict.insert(letter, LetterPlayed::PartiallyUsed);
                 } else {
@@ -123,7 +121,7 @@ fn row_hint(
         }
         let unique_letters = {
             let mut known_letters = Vec::new();
-            for letter in guesses.iter().map(|word| word.chars()).flatten() {
+            for letter in guesses.iter().flat_map(|word| word.chars()) {
                 if !known_letters.contains(&letter) {
                     known_letters.push(letter);
                 }
