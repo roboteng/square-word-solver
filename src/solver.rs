@@ -75,29 +75,34 @@ impl Puzzle {
     }
 
     fn alphabet(&self, hints: &[AsciiString]) -> BTreeMap<AsciiChar, LetterPlayed> {
-        let mut dict = BTreeMap::new();
         let grid_letters = self
             .solution
             .rows
             .iter()
             .flat_map(|word| word.chars())
             .collect::<Vec<_>>();
+
         let hint_letters = hints
             .iter()
             .flat_map(|word| word.chars())
             .collect::<Vec<_>>();
-        for letter in self.guesses.iter().flat_map(|word| word.chars()) {
-            if grid_letters.contains(&letter) {
-                if hint_letters.contains(&letter) {
-                    dict.insert(letter, LetterPlayed::PartiallyUsed);
+
+        self.guesses.iter().flat_map(|word| word.chars()).fold(
+            BTreeMap::new(),
+            |mut prev, letter| {
+                let is_letter_in_solution = if grid_letters.contains(&letter) {
+                    if hint_letters.contains(&letter) {
+                        LetterPlayed::PartiallyUsed
+                    } else {
+                        LetterPlayed::AllUsed
+                    }
                 } else {
-                    dict.insert(letter, LetterPlayed::AllUsed);
-                }
-            } else {
-                dict.insert(letter, LetterPlayed::NotInSolution);
-            }
-        }
-        dict
+                    LetterPlayed::NotInSolution
+                };
+                prev.insert(letter, is_letter_in_solution);
+                prev
+            },
+        )
     }
 
     pub fn guess(&mut self, guess: AsciiString) {
@@ -110,33 +115,29 @@ fn row_hint(
     known: [Option<AsciiChar>; 5],
     guesses: Vec<AsciiString>,
 ) -> AsciiString {
-    let unguessed_letters: Vec<AsciiChar> = {
-        let mut possible_hints = Vec::new();
-        let p = row.into_iter().zip(known.iter());
-        for (letter, known) in p {
-            if known.is_some() {
-                continue;
-            }
-            possible_hints.push(*letter);
-        }
-        let unique_letters = {
-            let mut known_letters = Vec::new();
-            for letter in guesses.iter().flat_map(|word| word.chars()) {
-                if !known_letters.contains(&letter) {
-                    known_letters.push(letter);
+    let possible_hints = row
+        .into_iter()
+        .zip(known.iter())
+        .filter(|(_, known)| known.is_none())
+        .map(|(letter, _)| *letter)
+        .collect::<Vec<_>>();
+
+    let unique_letters_of_guess =
+        guesses
+            .iter()
+            .flat_map(|word| word.chars())
+            .fold(Vec::new(), |mut prev, letter| {
+                if !prev.contains(&letter) {
+                    prev.push(letter);
                 }
-            }
-            known_letters
-        };
-        let mut hints = Vec::new();
-        for letter in unique_letters {
-            if possible_hints.contains(&letter) {
-                hints.push(letter);
-            }
-        }
-        hints
-    };
-    unguessed_letters.iter().collect()
+                prev
+            });
+
+    unique_letters_of_guess
+        .iter()
+        .filter(|letter| possible_hints.contains(letter))
+        .copied()
+        .collect::<AsciiString>()
 }
 
 #[derive(Debug, PartialEq, Eq, Default)]
