@@ -90,6 +90,7 @@ impl<'a> SolutionBuilder<'a> {
             let col = columns[0].as_str();
             let len = col.len();
             if len > 5 {
+                self.pop().unwrap();
                 return Err(AddError::TooManyRows);
             }
             if col < &self.words[0][0..len] {
@@ -282,5 +283,8 @@ mod test {
         let actual = builder.add("place");
         let expected = Err(AddError::TooManyRows);
         assert_eq!(actual, expected);
+
+        let actual = builder.build();
+        assert!(actual.is_ok());
     }
 }

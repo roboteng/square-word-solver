@@ -2,6 +2,7 @@
 use std::collections::BTreeMap;
 
 use ascii::{AsciiChar, AsciiString};
+use itertools::Itertools;
 
 use crate::Solution;
 
@@ -45,8 +46,8 @@ impl Puzzle {
 
     fn is_finished(&self, grid: &[[Option<AsciiChar>; 5]; 5]) -> bool {
         grid.iter()
-            .map(|row| row.iter().all(|l| l.is_some()))
-            .all(|r| r)
+            .flat_map(|row| row.iter())
+            .all(|ch| ch.is_some())
     }
 
     fn grid(&self) -> [[Option<AsciiChar>; 5]; 5] {
@@ -64,44 +65,45 @@ impl Puzzle {
     }
 
     fn hints(&self, grid: &[[Option<AsciiChar>; 5]; 5]) -> [AsciiString; 5] {
-        let hints = self
-            .solution
+        self.solution
             .rows
             .iter()
             .enumerate()
             .map(|(i, word)| row_hint(word.clone(), grid[i], self.guesses.clone()))
-            .collect::<Vec<_>>();
-        hints.try_into().unwrap()
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap()
     }
 
     fn alphabet(&self, hints: &[AsciiString]) -> BTreeMap<AsciiChar, LetterPlayed> {
-        let grid_letters = self
+        let letters_in_solution = self
             .solution
             .rows
             .iter()
             .flat_map(|word| word.chars())
             .collect::<Vec<_>>();
 
-        let hint_letters = hints
+        let letters_in_hints = hints
             .iter()
             .flat_map(|word| word.chars())
             .collect::<Vec<_>>();
 
-        self.guesses.iter().flat_map(|word| word.chars()).fold(
-            BTreeMap::new(),
-            |mut prev, letter| {
-                let is_letter_in_solution = if grid_letters.contains(&letter) {
-                    if hint_letters.contains(&letter) {
-                        LetterPlayed::PartiallyUsed
+        BTreeMap::from_iter(
+            self.guesses
+                .iter()
+                .flat_map(|word| word.chars())
+                .map(|letter| {
+                    let is_letter_in_solution = if letters_in_solution.contains(&letter) {
+                        if letters_in_hints.contains(&letter) {
+                            LetterPlayed::PartiallyUsed
+                        } else {
+                            LetterPlayed::AllUsed
+                        }
                     } else {
-                        LetterPlayed::AllUsed
-                    }
-                } else {
-                    LetterPlayed::NotInSolution
-                };
-                prev.insert(letter, is_letter_in_solution);
-                prev
-            },
+                        LetterPlayed::NotInSolution
+                    };
+                    (letter, is_letter_in_solution)
+                }),
         )
     }
 
@@ -112,32 +114,25 @@ impl Puzzle {
 
 fn row_hint(
     row: AsciiString,
-    known: [Option<AsciiChar>; 5],
+    known_letters: [Option<AsciiChar>; 5],
     guesses: Vec<AsciiString>,
 ) -> AsciiString {
     let possible_hints = row
         .into_iter()
-        .zip(known.iter())
-        .filter(|(_, known)| known.is_none())
-        .map(|(letter, _)| *letter)
+        .zip(known_letters.iter())
+        .filter_map(|(letter, known)| match known {
+            Some(_) => None,
+            None => Some(letter),
+        })
+        .copied()
         .collect::<Vec<_>>();
 
-    let unique_letters_of_guess =
-        guesses
-            .iter()
-            .flat_map(|word| word.chars())
-            .fold(Vec::new(), |mut prev, letter| {
-                if !prev.contains(&letter) {
-                    prev.push(letter);
-                }
-                prev
-            });
-
-    unique_letters_of_guess
+    guesses
         .iter()
+        .flat_map(|word| word.chars())
+        .unique()
         .filter(|letter| possible_hints.contains(letter))
-        .copied()
-        .collect::<AsciiString>()
+        .collect()
 }
 
 #[derive(Debug, PartialEq, Eq, Default)]
