@@ -23,7 +23,7 @@ impl Error for BuildError {}
 #[derive(Debug, PartialEq, Eq)]
 pub enum AddedWord {
     Incomplete,
-    Finished([Solution; 2]),
+    Finished(Box<[Solution; 2]>),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -111,7 +111,7 @@ impl<'a> SolutionBuilder<'a> {
                 .concat();
                 let set: HashSet<&String> = HashSet::from_iter(words.iter());
                 if set.len() == 10 {
-                    Ok(AddedWord::Finished(self.build().unwrap()))
+                    Ok(AddedWord::Finished(Box::new(self.build().unwrap())))
                 } else {
                     Err(AddError::FinishedDuplicate)
                 }
@@ -133,8 +133,8 @@ impl<'a> SolutionBuilder<'a> {
     fn build(&self) -> Result<[Solution; 2], BuildError> {
         if self.words.len() == 5 {
             Ok([
-                Solution::new(self.words.clone()),
-                Solution::new(self.columns()),
+                Solution::new(self.words.clone().try_into().unwrap()),
+                Solution::new(self.columns().try_into().unwrap()),
             ])
         } else {
             Err(BuildError::Incomplete)
@@ -221,10 +221,10 @@ mod test {
         builder.add(ROWS[2]).unwrap();
         builder.add(ROWS[3]).unwrap();
         let actual = builder.add(ROWS[4]);
-        let expected = Ok(AddedWord::Finished([
-            Solution::new(ROWS.to_vec()),
-            Solution::new(COLUMNS.to_vec()),
-        ]));
+        let expected = Ok(AddedWord::Finished(Box::new([
+            Solution::new(ROWS),
+            Solution::new(COLUMNS),
+        ])));
         assert_eq!(actual, expected);
     }
 

@@ -65,14 +65,10 @@ impl Puzzle {
     }
 
     fn hints(&self, grid: &[[Option<AsciiChar>; 5]; 5]) -> [AsciiString; 5] {
-        self.solution
-            .rows
-            .iter()
-            .enumerate()
-            .map(|(i, word)| row_hint(word.clone(), grid[i], self.guesses.clone()))
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap()
+        [0, 1, 2, 3, 4]
+            .zip(self.solution.rows.clone())
+            // is there a better way to do something like array.enumerate here?
+            .map(|(i, word)| row_hint(word, grid[i], self.guesses.clone()))
     }
 
     fn alphabet(&self, hints: &[AsciiString]) -> BTreeMap<AsciiChar, LetterPlayed> {
@@ -151,9 +147,7 @@ mod test {
 
     #[test]
     fn with_no_guesses_everything_is_blank() {
-        let puzzle = Puzzle::new(Solution::new(vec![
-            "grime", "honor", "outdo", "steed", "terse",
-        ]));
+        let puzzle = Puzzle::new(Solution::new(["grime", "honor", "outdo", "steed", "terse"]));
 
         let expected = PuzzleViewModel::default();
         let actual = puzzle.view();
@@ -163,9 +157,7 @@ mod test {
 
     #[test]
     fn after_guessing_arose() {
-        let mut puzzle = Puzzle::new(Solution::new(vec![
-            "grime", "honor", "outdo", "steed", "terse",
-        ]));
+        let mut puzzle = Puzzle::new(Solution::new(["grime", "honor", "outdo", "steed", "terse"]));
 
         puzzle.guess(AsciiString::from_ascii("arose").unwrap());
 
@@ -204,9 +196,7 @@ mod test {
 
     #[test]
     fn after_guessing_four_times() {
-        let mut puzzle = Puzzle::new(Solution::new(vec![
-            "grime", "honor", "outdo", "steed", "terse",
-        ]));
+        let mut puzzle = Puzzle::new(Solution::new(["grime", "honor", "outdo", "steed", "terse"]));
 
         puzzle.guess(AsciiString::from_ascii("grime").unwrap());
         puzzle.guess(AsciiString::from_ascii("honor").unwrap());
@@ -285,9 +275,7 @@ mod test {
 
     #[test]
     fn full_solution() {
-        let mut puzzle = Puzzle::new(Solution::new(vec![
-            "grime", "honor", "outdo", "steed", "terse",
-        ]));
+        let mut puzzle = Puzzle::new(Solution::new(["grime", "honor", "outdo", "steed", "terse"]));
 
         puzzle.guess(AsciiString::from_ascii("grime").unwrap());
         puzzle.guess(AsciiString::from_ascii("honor").unwrap());

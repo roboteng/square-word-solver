@@ -1,5 +1,6 @@
 #![feature(test)]
 #![feature(iter_intersperse)]
+#![feature(array_zip)]
 extern crate num_cpus;
 use ascii::AsciiString;
 use builder::{AddedWord, SolutionBuilder};
@@ -38,16 +39,13 @@ pub fn five_letter_words(string: &str) -> Vec<String> {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Solution {
-    rows: Vec<AsciiString>,
+    rows: [AsciiString; 5],
 }
 
 impl Solution {
-    pub fn new<S: AsRef<str>>(rows: Vec<S>) -> Self {
+    pub fn new<S: AsRef<str>>(rows: [S; 5]) -> Self {
         Self {
-            rows: rows
-                .iter()
-                .map(|s| AsciiString::from_ascii(s.as_ref()).unwrap())
-                .collect(),
+            rows: rows.map(|s| AsciiString::from_ascii(s.as_ref()).unwrap()),
         }
     }
 }
@@ -217,7 +215,7 @@ fn find_subsolutions<'a>(
                 builder.pop().unwrap();
             }
             Ok(AddedWord::Finished(sols)) => {
-                solutions.append(&mut Vec::from(sols));
+                solutions.append(&mut Vec::from(*sols));
                 builder.pop().unwrap();
             }
             Err(_) => {}
@@ -277,7 +275,13 @@ mod my_test {
         let rows = vec!["ghost", "route", "inter", "modes", "erode"];
         let list = WordList::new([columns.clone(), rows.clone()].concat());
         let solutions = find_solutions(&list, &[columns.clone(), rows.clone()].concat());
-        assert_eq!(solutions, vec![Solution::new(rows), Solution::new(columns)]);
+        assert_eq!(
+            solutions,
+            vec![
+                Solution::new(rows.try_into().unwrap()),
+                Solution::new(columns.try_into().unwrap())
+            ]
+        );
     }
 
     #[bench]

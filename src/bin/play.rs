@@ -7,7 +7,7 @@ fn main() {
     let lines = read_to_string("./solutions.txt").unwrap();
     let lines = lines.lines().collect::<Vec<_>>();
     let words = lines[0].split(',').collect::<Vec<_>>();
-    let sol = Solution::new(words);
+    let sol = Solution::new(words.try_into().unwrap());
     let mut puzzle = Puzzle::new(sol);
     let mut vm = puzzle.view();
     let stdin = stdin();
