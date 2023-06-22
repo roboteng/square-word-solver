@@ -5,6 +5,7 @@ extern crate num_cpus;
 use ascii::AsciiString;
 use builder::{AddedWord, SolutionBuilder};
 use regex::Regex;
+use solver::{Puzzle, PuzzleViewModel};
 use std::io::{self, Write};
 use std::{
     collections::HashMap,
@@ -47,6 +48,18 @@ impl Solution {
         Self {
             rows: rows.map(|s| AsciiString::from_ascii(s.as_ref()).unwrap()),
         }
+    }
+
+    pub fn does_match(&self, view: &PuzzleViewModel) -> bool {
+        let my_view = {
+            let mut puzzle = Puzzle::new(self.clone());
+            view.guesses.iter().for_each(|guess| {
+                puzzle.guess(guess.clone());
+            });
+            puzzle.view()
+        };
+
+        my_view == *view
     }
 }
 
@@ -226,6 +239,9 @@ fn find_subsolutions<'a>(
 
 #[cfg(test)]
 mod my_test {
+    use crate::solver::Puzzle;
+    use pretty_assertions::assert_eq;
+
     use super::*;
     use test::Bencher;
     extern crate test;
@@ -310,5 +326,28 @@ mod my_test {
         let list = WordList::new(valid_words.clone());
 
         b.iter(|| find_subsolutions(&valid_words, &mut SolutionBuilder::new(&list)))
+    }
+
+    #[test]
+    fn solution_should_match_vm_with_no_guesses() {
+        let solution = Solution::new(["grime", "honor", "outdo", "steed", "terse"]);
+        let puzzle = Puzzle::new(solution.clone());
+        let view = puzzle.view();
+
+        let actual = solution.does_match(&view);
+        let expected = true;
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn does_not_pass_when_grid_does_not_match() {
+        let tester = Solution::new(["small", "movie", "irate", "loser", "entry"]);
+        let answer = Solution::new(["small", "movie", "alive", "stark", "hones"]);
+        let mut puzzle = Puzzle::new(answer);
+        puzzle.guess(AsciiString::from_ascii("ricky").unwrap());
+        let view = puzzle.view();
+
+        let actual = tester.does_match(&view);
+        assert_eq!(actual, false);
     }
 }
