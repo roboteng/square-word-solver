@@ -122,6 +122,24 @@ enum ThreadMessage {
     Done,
 }
 
+pub fn find_solutions_new<'a>(
+    possible_columns: &WordList,
+    possible_rows: &'a Vec<&'a str>,
+) -> Vec<Solution> {
+    let k = possible_rows
+        .iter()
+        .filter_map(|word| {
+            let mut builder = SolutionBuilder::new(possible_columns);
+            builder.add(word).ok()?;
+            let sols = find_subsolutions(possible_rows, &mut builder);
+            Some(sols.into_iter())
+        })
+        .flatten()
+        .collect();
+
+    k
+}
+
 pub fn find_solutions<'a>(
     possible_columns: &WordList,
     possible_rows: &'a Vec<&'a str>,

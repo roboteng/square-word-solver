@@ -85,14 +85,14 @@ impl<'a> SolutionBuilder<'a> {
         if self.words.contains(&word) {
             Err(AddError::Duplicate)
         } else {
+            if self.words.len() >= 5 {
+                return Err(AddError::TooManyRows);
+            }
             self.words.push(word);
             let columns = self.columns();
             let col = columns[0].as_str();
             let len = col.len();
-            if len > 5 {
-                self.pop().unwrap();
-                return Err(AddError::TooManyRows);
-            }
+
             if col < &self.words[0][0..len] {
                 self.pop().unwrap();
                 Err(AddError::WrongOrder)
