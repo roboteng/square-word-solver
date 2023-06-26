@@ -96,19 +96,14 @@ impl<'a> SolutionBuilder<'a> {
             if col < &self.words[0][0..len] {
                 self.pop().unwrap();
                 Err(AddError::WrongOrder)
-            } else if self
-                .columns()
+            } else if columns
                 .iter()
-                .any(|w| !self.possible_columns.contains(w))
+                .any(|w| !self.possible_columns.contains(w.as_str()))
             {
                 self.pop().unwrap();
                 Err(AddError::InvalidColumns)
             } else if self.words.len() == 5 {
-                let words = [
-                    self.words.iter().map(|s| s.to_string()).collect(),
-                    self.columns(),
-                ]
-                .concat();
+                let words = [self.words.iter().map(|s| s.to_string()).collect(), columns].concat();
                 let set: HashSet<&String> = HashSet::from_iter(words.iter());
                 if set.len() == 10 {
                     Ok(AddedWord::Finished(Box::new(self.build().unwrap())))
