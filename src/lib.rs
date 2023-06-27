@@ -18,7 +18,19 @@ use std::{
 };
 
 mod builder;
+mod double_sided;
 pub mod solver;
+
+trait SolutionFinder<'a> {
+    fn new(words: &[&'a str]) -> Self;
+    fn find(&self) -> Vec<Solution>;
+}
+
+fn range_for(words: &[&str], new_word: &str) -> std::ops::Range<usize> {
+    let start = words.partition_point(|word| word < &new_word);
+    let end = words.partition_point(|word| word.starts_with(new_word) || word < &new_word);
+    start..end
+}
 
 pub fn get_words() -> Result<Vec<String>, io::Error> {
     let path = Path::new("words.txt");
@@ -367,5 +379,19 @@ mod my_test {
 
         let actual = tester.does_match(&view);
         assert_eq!(actual, false);
+    }
+
+    #[test]
+    fn range_a_b_c_for_b() {
+        let list = ["a", "b", "c"];
+        let range = range_for(&list, "b");
+        assert_eq!(range, 1..2)
+    }
+
+    #[test]
+    fn big_range() {
+        let list = ["about", "other", "their", "there", "these", "would"];
+        let range = range_for(&list, "the");
+        assert_eq!(range, 2..5)
     }
 }
