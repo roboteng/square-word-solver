@@ -1,7 +1,7 @@
 use crate::{range_for, Solution, SolutionFinder};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct DoubleSidedFinder<'a> {
+pub struct DoubleSidedFinder<'a> {
     words: Vec<&'a str>,
 }
 
@@ -36,7 +36,7 @@ impl<'a> Inner<'a> {
         if slot == 4 {
             return self.fill_last_slot(words);
         }
-        let start = (0..slot).map(|i| &self.columns[i][slot..slot + 1]);
+        let start = (0..slot).map(|col| &self.columns[col][slot..slot + 1]);
         let start = String::from_iter(start);
         range_for(words, &start)
             .map(|i| {
@@ -50,7 +50,7 @@ impl<'a> Inner<'a> {
     }
 
     fn fill_middle_column(&mut self, words: &'a [&'a str], slot: usize) -> Vec<Solution> {
-        let start = (0..slot).map(|i| &self.rows[i][slot..slot + 1]);
+        let start = (0..slot + 1).map(|i| &self.rows[i][slot..slot + 1]);
         let start = String::from_iter(start);
         range_for(words, &start)
             .map(|i| {
@@ -69,8 +69,9 @@ impl<'a> Inner<'a> {
         range_for(words, &start)
             .map(|i| {
                 self.rows.push(words[i]);
-                println!("{:?}", self.rows);
-                Solution::new(self.rows.clone().try_into().unwrap())
+                let k = Solution::new(self.rows.clone().try_into().unwrap());
+                self.rows.pop();
+                k
             })
             .collect()
     }

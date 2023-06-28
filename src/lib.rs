@@ -18,10 +18,10 @@ use std::{
 };
 
 mod builder;
-mod double_sided;
+pub mod double_sided;
 pub mod solver;
 
-trait SolutionFinder<'a> {
+pub trait SolutionFinder<'a> {
     fn new(words: &[&'a str]) -> Self;
     fn find(&self) -> Vec<Solution>;
 }
