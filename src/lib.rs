@@ -20,6 +20,7 @@ use std::{
 mod builder;
 pub mod double_sided;
 pub mod solver;
+pub mod trivial_finder;
 
 pub trait SolutionFinder<'a> {
     fn new(words: &'a [&'a str]) -> Self;
