@@ -220,7 +220,6 @@ fn spawn_worker<'a>(
 ) {
     let mut start: Option<&&str> = { starts.lock().unwrap().next() };
     while let Some(start_word) = start {
-        println!("Working on {start_word}");
         let mut builder = SolutionBuilder::new(col);
         match builder.add(start_word) {
             Ok(_) => {}
@@ -413,4 +412,6 @@ mod my_test {
         let range = range_for(&list, "the");
         assert_eq!(range, 2..5)
     }
+
+    mod proptesting;
 }

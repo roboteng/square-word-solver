@@ -1,6 +1,6 @@
 use std::{collections::HashSet, ops::Deref};
 
-use crate::{solver, Solution, SolutionFinder};
+use crate::{Solution, SolutionFinder};
 
 pub struct TrivialFinder<'a> {
     words: &'a [&'a str],
