@@ -64,16 +64,31 @@ impl<'a> Inner<'a> {
     }
 
     fn fill_last_slot(&mut self, words: &'a [&'a str]) -> Vec<Solution> {
-        let start = (0..4).map(|i| &self.rows[i][4..5]);
+        let start = (0..4).map(|i| &self.columns[i][4..5]);
         let start = String::from_iter(start);
         range_for(words, &start)
-            .map(|i| {
+            .filter_map(|i| {
                 self.rows.push(words[i]);
-                let k = Solution::new(self.rows.clone().try_into().unwrap());
+                let k = if self.is_valid(words) {
+                    Some(Solution::new(self.rows.clone().try_into().unwrap()))
+                } else {
+                    None
+                };
                 self.rows.pop();
                 k
             })
             .collect()
+    }
+
+    fn is_valid(&self, words: &'a [&'a str]) -> bool {
+        let last_col = (0..5).map(|row| &self.rows[row][4..5]).collect::<String>();
+        if range_for(words, &last_col).len() != 1 {
+            return false;
+        }
+        let mut w = [self.rows.clone(), self.columns.clone(), vec![&last_col]].concat();
+        w.sort();
+        w.dedup();
+        w.len() == 10
     }
 }
 

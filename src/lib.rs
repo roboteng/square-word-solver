@@ -22,7 +22,7 @@ pub mod double_sided;
 pub mod solver;
 
 pub trait SolutionFinder<'a> {
-    fn new(words: &[&'a str]) -> Self;
+    fn new(words: &'a [&'a str]) -> Self;
     fn find(&self) -> Vec<Solution>;
 }
 
@@ -30,6 +30,24 @@ fn range_for(words: &[&str], new_word: &str) -> std::ops::Range<usize> {
     let start = words.partition_point(|word| word < &new_word);
     let end = words.partition_point(|word| word.starts_with(new_word) || word < &new_word);
     start..end
+}
+
+pub struct First<'a> {
+    word_list: WordList,
+    words: &'a [&'a str],
+}
+
+impl<'a> SolutionFinder<'a> for First<'a> {
+    fn new(words: &'a [&'a str]) -> Self {
+        Self {
+            word_list: WordList::new(words.to_vec()),
+            words,
+        }
+    }
+
+    fn find(&self) -> Vec<Solution> {
+        find_solutions_new(&self.word_list, &self.words.to_vec())
+    }
 }
 
 pub fn get_words() -> Result<Vec<String>, io::Error> {
@@ -52,7 +70,7 @@ pub fn five_letter_words(string: &str) -> Vec<String> {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Solution {
-    rows: [AsciiString; 5],
+    pub rows: [AsciiString; 5],
 }
 
 impl Solution {

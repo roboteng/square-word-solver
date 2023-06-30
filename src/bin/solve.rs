@@ -2,11 +2,19 @@ use square_word::{double_sided::DoubleSidedFinder, *};
 
 fn main() {
     let valid_words = get_words().unwrap();
-    let valid_words: Vec<&str> = valid_words.iter().take(400).map(|s| s.as_str()).collect();
+    let valid_words: Vec<&str> = valid_words.iter().take(1800).map(|s| s.as_str()).collect();
 
-    // let list = WordList::new(valid_words.clone());
-    // let solutions = find_solutions_new(&list, &valid_words);
-    let k = DoubleSidedFinder::new(&valid_words);
-    let solutions = k.find();
-    println!("{solutions:?}");
+    find_solutions::<DoubleSidedFinder<'_>>(&valid_words);
+}
+
+fn find_solutions<'a, T>(words: &'a [&'a str])
+where
+    T: SolutionFinder<'a>,
+{
+    let t = T::new(words);
+    let solutions = t.find();
+    for sol in solutions.iter() {
+        println!("{sol}");
+    }
+    println!("{} solutions", solutions.len());
 }
