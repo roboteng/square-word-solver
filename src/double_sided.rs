@@ -1,3 +1,5 @@
+use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+
 use crate::{range_for, Solution, SolutionFinder};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
