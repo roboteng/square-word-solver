@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use crate::{range_for, Solution, SolutionFinder};
@@ -8,22 +9,26 @@ pub struct DoubleSidedFinder<'a> {
 }
 
 struct Inner<'a> {
+    starting_index: usize,
     rows: Vec<&'a str>,
     columns: Vec<&'a str>,
 }
 
 impl<'a> Inner<'a> {
-    fn new(starting_word: &'a str) -> Self {
+    fn new(starting_index: usize, starting_word: &'a str) -> Self {
         let mut rows = Vec::with_capacity(5);
         rows.push(starting_word);
         Self {
+            starting_index,
             rows,
             columns: Vec::with_capacity(5),
         }
     }
 
     fn fill_first_column(&mut self, words: &'a [&'a str]) -> Vec<Solution> {
+        let starting_index = self.starting_index;
         range_for(words, &self.rows[0][0..1])
+            .filter(|&i| i > starting_index)
             .map(|i| {
                 self.columns.push(words[i]);
                 let iter = self.fill_middle_slot(words, 1).into_iter();
@@ -69,21 +74,29 @@ impl<'a> Inner<'a> {
         let start = (0..4).map(|i| &self.columns[i][4..5]);
         let start = String::from_iter(start);
         range_for(words, &start)
-            .filter_map(|i| {
+            .map(|i| {
                 self.rows.push(words[i]);
                 let k = if self.is_valid(words) {
-                    Some(Solution::new(self.rows.clone().try_into().unwrap()))
+                    let last_column = self.last_column();
+                    let mut columns = self.columns.clone();
+                    columns.push(&last_column);
+                    let sols = vec![
+                        Solution::new(columns.try_into().unwrap()),
+                        Solution::new(self.rows.clone().try_into().unwrap()),
+                    ];
+                    sols.into_iter()
                 } else {
-                    None
+                    vec![].into_iter()
                 };
                 self.rows.pop();
                 k
             })
+            .flatten()
             .collect()
     }
 
     fn is_valid(&self, words: &'a [&'a str]) -> bool {
-        let last_col = (0..5).map(|row| &self.rows[row][4..5]).collect::<String>();
+        let last_col = self.last_column();
         if range_for(words, &last_col).len() != 1 {
             return false;
         }
@@ -92,14 +105,19 @@ impl<'a> Inner<'a> {
         w.dedup();
         w.len() == 10
     }
+
+    fn last_column(&self) -> String {
+        (0..5).map(|row| &self.rows[row][4..5]).collect::<String>()
+    }
 }
 
 impl<'a> DoubleSidedFinder<'a> {
     fn find_solutions(&self) -> Vec<Solution> {
         self.words
             .iter()
-            .map(|word| {
-                let mut inner = Inner::new(&word);
+            .enumerate()
+            .map(|(i, word)| {
+                let mut inner = Inner::new(i, &word);
                 inner.fill_first_column(&self.words).into_iter()
             })
             .flatten()
