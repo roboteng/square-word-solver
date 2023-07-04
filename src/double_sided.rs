@@ -8,106 +8,142 @@ pub struct DoubleSidedFinder<'a> {
     words: Vec<&'a str>,
 }
 
-struct Inner<'a> {
-    starting_index: usize,
-    rows: Vec<&'a str>,
-    columns: Vec<&'a str>,
+struct Inner {
+    row_indexes: Vec<usize>,
+    column_indexes: Vec<usize>,
 }
 
-impl<'a> Inner<'a> {
-    fn new(starting_index: usize, starting_word: &'a str) -> Self {
+impl Inner {
+    fn new(starting_index: usize) -> Self {
         let mut rows = Vec::with_capacity(5);
-        rows.push(starting_word);
+        rows.push(starting_index);
         Self {
-            starting_index,
-            rows,
-            columns: Vec::with_capacity(5),
+            row_indexes: rows,
+            column_indexes: Vec::with_capacity(5),
         }
     }
 
-    fn fill_first_column(&mut self, words: &'a [&'a str]) -> Vec<Solution> {
-        let starting_index = self.starting_index;
-        range_for(words, &self.rows[0][0..1])
+    fn fill_first_column<'a>(&mut self, words: &'a [&'a str]) -> Vec<Solution> {
+        let starting_index = self.row_indexes[0];
+        range_for(words, &words[*&self.row_indexes[0]][0..1])
             .filter(|&i| i > starting_index)
             .map(|i| {
-                self.columns.push(words[i]);
+                self.column_indexes.push(i);
                 let iter = self.fill_middle_slot(words, 1).into_iter();
-                self.columns.pop();
+                self.column_indexes.pop();
                 iter
             })
             .flatten()
             .collect()
     }
 
-    fn fill_middle_slot(&mut self, words: &'a [&'a str], slot: usize) -> Vec<Solution> {
+    fn fill_middle_slot<'a>(&mut self, words: &'a [&'a str], slot: usize) -> Vec<Solution> {
         if slot == 4 {
             return self.fill_last_slot(words);
         }
-        let start = (0..slot).map(|col| &self.columns[col][slot..slot + 1]);
+        let start = (0..slot).map(|col| &words[self.column_indexes[col]][slot..slot + 1]);
         let start = String::from_iter(start);
         range_for(words, &start)
             .map(|i| {
-                self.rows.push(words[i]);
+                self.row_indexes.push(i);
                 let iter = self.fill_middle_column(words, slot).into_iter();
-                self.rows.pop();
+                self.row_indexes.pop();
                 iter
             })
             .flatten()
             .collect()
     }
 
-    fn fill_middle_column(&mut self, words: &'a [&'a str], slot: usize) -> Vec<Solution> {
-        let start = (0..slot + 1).map(|i| &self.rows[i][slot..slot + 1]);
+    fn fill_middle_column<'a>(&mut self, words: &'a [&'a str], slot: usize) -> Vec<Solution> {
+        let start = (0..slot + 1).map(|i| &words[self.row_indexes[i]][slot..slot + 1]);
         let start = String::from_iter(start);
         range_for(words, &start)
             .map(|i| {
-                self.columns.push(words[i]);
+                self.column_indexes.push(i);
                 let iter = self.fill_middle_slot(words, slot + 1).into_iter();
-                self.columns.pop();
+                self.column_indexes.pop();
                 iter
             })
             .flatten()
             .collect()
     }
 
-    fn fill_last_slot(&mut self, words: &'a [&'a str]) -> Vec<Solution> {
-        let start = (0..4).map(|i| &self.columns[i][4..5]);
+    fn fill_last_slot<'a>(&mut self, words: &'a [&'a str]) -> Vec<Solution> {
+        let start = (0..4).map(|i| &words[self.column_indexes[i]][4..5]);
         let start = String::from_iter(start);
         range_for(words, &start)
             .map(|i| {
-                self.rows.push(words[i]);
+                self.row_indexes.push(i);
                 let k = if self.is_valid(words) {
-                    let last_column = self.last_column();
-                    let mut columns = self.columns.clone();
-                    columns.push(&last_column);
-                    let sols = vec![
-                        Solution::new(columns.try_into().unwrap()),
-                        Solution::new(self.rows.clone().try_into().unwrap()),
-                    ];
+                    let sols = match self.last_column(words) {
+                        Some(last_column) => {
+                            let mut columns = self.column_indexes.clone();
+                            columns.push(last_column);
+                            vec![
+                                Solution::new(
+                                    columns
+                                        .iter()
+                                        .map(|&i| words[i])
+                                        .collect::<Vec<_>>()
+                                        .try_into()
+                                        .unwrap(),
+                                ),
+                                Solution::new(
+                                    self.row_indexes
+                                        .iter()
+                                        .map(|&i| words[i])
+                                        .collect::<Vec<_>>()
+                                        .try_into()
+                                        .unwrap(),
+                                ),
+                            ]
+                        }
+                        None => Vec::new(),
+                    };
+
                     sols.into_iter()
                 } else {
                     vec![].into_iter()
                 };
-                self.rows.pop();
+                self.row_indexes.pop();
                 k
             })
             .flatten()
             .collect()
     }
 
-    fn is_valid(&self, words: &'a [&'a str]) -> bool {
-        let last_col = self.last_column();
-        if range_for(words, &last_col).len() != 1 {
-            return false;
+    fn is_valid<'a>(&self, words: &'a [&'a str]) -> bool {
+        match self.last_column(words) {
+            Some(last_col) => {
+                if range_for(words, &words[last_col]).len() != 1 {
+                    return false;
+                }
+                let mut w = [
+                    self.row_indexes.clone(),
+                    self.column_indexes.clone(),
+                    vec![last_col],
+                ]
+                .concat();
+                w.sort();
+                w.dedup();
+                w.len() == 10
+            }
+            None => false,
         }
-        let mut w = [self.rows.clone(), self.columns.clone(), vec![&last_col]].concat();
-        w.sort();
-        w.dedup();
-        w.len() == 10
     }
 
-    fn last_column(&self) -> String {
-        (0..5).map(|row| &self.rows[row][4..5]).collect::<String>()
+    fn last_column<'a>(&self, words: &'a [&'a str]) -> Option<usize> {
+        let range = range_for(
+            words,
+            &(0..5)
+                .map(|row| &words[self.row_indexes[row]][4..5])
+                .collect::<String>(),
+        );
+        if range.len() == 1 {
+            Some(range.start)
+        } else {
+            None
+        }
     }
 }
 
@@ -117,7 +153,7 @@ impl<'a> DoubleSidedFinder<'a> {
             .iter()
             .enumerate()
             .map(|(i, word)| {
-                let mut inner = Inner::new(i, &word);
+                let mut inner = Inner::new(i);
                 inner.fill_first_column(&self.words).into_iter()
             })
             .flatten()
