@@ -7,16 +7,8 @@ use builder::{AddedWord, SolutionBuilder};
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
 use solver::{Puzzle, PuzzleViewModel};
-use std::io::{self, Write};
-use std::{
-    collections::HashMap,
-    fmt::Display,
-    fs::{File, OpenOptions},
-    io::Read,
-    path::Path,
-    sync::{mpsc::channel, Arc, Mutex},
-    thread,
-};
+use std::io;
+use std::{collections::HashMap, fmt::Display, fs::File, io::Read, path::Path};
 
 mod builder;
 pub mod double_sided;
@@ -149,11 +141,6 @@ impl WordList {
     }
 }
 
-enum ThreadMessage {
-    Solutions(Vec<Solution>),
-    Done,
-}
-
 pub fn find_solutions_new<'a>(
     possible_columns: &WordList,
     possible_rows: &'a Vec<&'a str>,
@@ -170,98 +157,6 @@ pub fn find_solutions_new<'a>(
         .collect();
 
     k
-}
-
-pub fn find_solutions<'a>(
-    possible_columns: &WordList,
-    possible_rows: &'a Vec<&'a str>,
-) -> Vec<Solution> {
-    let c = Arc::new(possible_columns);
-    let r = Arc::new(possible_rows);
-
-    let starts = Arc::new(Mutex::new(possible_rows.iter()));
-    let (sol_tx, sol_rx) = channel();
-
-    let sols = Arc::new(Mutex::new(vec![]));
-    let solution_list = sols.clone();
-    thread::scope(|scope| {
-        let n = num_cpus::get();
-        println!("running on {n} threads");
-        let collector = scope.spawn(move || {
-            spawn_collector(n, sol_rx, solution_list);
-        });
-
-        let mut threads = Vec::new();
-        for _ in 0..n {
-            let tx = sol_tx.clone();
-            let c = c.clone();
-            let r = r.clone();
-            let starts = starts.clone();
-
-            threads.push(scope.spawn(move || {
-                spawn_worker(&c, &r, starts, tx);
-            }));
-        }
-
-        for thread in threads {
-            thread.join().unwrap();
-        }
-        collector.join().unwrap();
-    });
-
-    let x = sols.lock().unwrap().to_vec();
-    x
-}
-
-fn spawn_worker<'a>(
-    col: &WordList,
-    row: &'a Vec<&'a str>,
-    starts: Arc<Mutex<std::slice::Iter<&'a str>>>,
-    tx: std::sync::mpsc::Sender<ThreadMessage>,
-) {
-    let mut start: Option<&&str> = { starts.lock().unwrap().next() };
-    while let Some(start_word) = start {
-        let mut builder = SolutionBuilder::new(col);
-        match builder.add(start_word) {
-            Ok(_) => {}
-            Err(_) => {
-                start = starts.lock().unwrap().next();
-                continue;
-            }
-        };
-        let solutions = find_subsolutions(row, &mut builder);
-        tx.send(ThreadMessage::Solutions(solutions)).unwrap();
-        {
-            start = starts.lock().unwrap().next();
-        }
-    }
-    tx.send(ThreadMessage::Done).unwrap();
-}
-
-fn spawn_collector(
-    len: usize,
-    sol_rx: std::sync::mpsc::Receiver<ThreadMessage>,
-    solution_list: Arc<Mutex<Vec<Solution>>>,
-) {
-    let mut count = 0;
-    while count < len {
-        match sol_rx.recv().unwrap() {
-            ThreadMessage::Solutions(mut current_solutions) => {
-                let mut file = OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open("solutions.txt")
-                    .unwrap();
-
-                for solution in current_solutions.iter() {
-                    writeln!(file, "{solution}").unwrap();
-                }
-                let mut solution_list = solution_list.lock().unwrap();
-                solution_list.append(&mut current_solutions);
-            }
-            ThreadMessage::Done => count += 1,
-        }
-    }
 }
 
 fn find_subsolutions<'a>(
@@ -324,29 +219,6 @@ mod my_test {
         let words = vec!["foo", "foobar"];
         let list = WordList::new(words);
         assert!(list.contains("foob"));
-    }
-
-    #[test]
-    fn cannot_find_solutions_with_empty_word_list() {
-        let list = WordList::new(vec![]);
-        let rows = vec![];
-        let solutions = find_solutions(&list, &rows);
-        assert_eq!(solutions, vec![]);
-    }
-
-    #[test]
-    fn finds_1_solution_with_word_list_from_known_solution() {
-        let columns = vec!["grime", "honor", "outdo", "steed", "terse"];
-        let rows = vec!["ghost", "route", "inter", "modes", "erode"];
-        let list = WordList::new([columns.clone(), rows.clone()].concat());
-        let solutions = find_solutions(&list, &[columns.clone(), rows.clone()].concat());
-        assert_eq!(
-            solutions,
-            vec![
-                Solution::new(rows.try_into().unwrap()),
-                Solution::new(columns.try_into().unwrap())
-            ]
-        );
     }
 
     #[bench]
@@ -564,6 +436,26 @@ mod my_test {
             sol
         };
         assert_eq!(first, known);
+    }
+
+    #[test]
+    fn word_list_fail() {
+        let words = vec![
+            "event", "clues", "angel", "scent", "larva", "pests", "lance", "salts", "clasp",
+            "urges", // extra word
+            "pelts",
+        ];
+        let list = WordList::new(words.clone());
+
+        for len in 1..5 {
+            for word in words.iter() {
+                let sub_str = &word[0..len];
+                assert!(
+                    list.contains(sub_str),
+                    "\"{sub_str}\" not found in list from word: {word}"
+                )
+            }
+        }
     }
 
     mod proptesting;
