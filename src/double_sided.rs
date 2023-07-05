@@ -1,3 +1,5 @@
+use std::iter::Peekable;
+
 #[allow(unused_imports)]
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
@@ -25,8 +27,10 @@ impl Inner {
 
     fn fill_first_column<'a>(&mut self, words: &'a [&'a str]) -> Vec<Solution> {
         let starting_index = self.row_indexes[0];
+        let used_words = self.used_words();
         range_for(words, &words[*&self.row_indexes[0]][0..1])
             .filter(|&i| i > starting_index)
+            .filter(|i| !used_words.contains(i))
             .map(|i| {
                 self.column_indexes.push(i);
                 let iter = self.fill_middle_slot(words, 1).into_iter();
@@ -43,7 +47,10 @@ impl Inner {
         }
         let start = (0..slot).map(|col| &words[self.column_indexes[col]][slot..slot + 1]);
         let start = String::from_iter(start);
+        let used_words = self.used_words();
+
         range_for(words, &start)
+            .except_for(used_words)
             .map(|i| {
                 self.row_indexes.push(i);
                 let iter = self.fill_middle_column(words, slot).into_iter();
@@ -57,7 +64,10 @@ impl Inner {
     fn fill_middle_column<'a>(&mut self, words: &'a [&'a str], slot: usize) -> Vec<Solution> {
         let start = (0..slot + 1).map(|i| &words[self.row_indexes[i]][slot..slot + 1]);
         let start = String::from_iter(start);
+        let used_words = self.used_words();
+
         range_for(words, &start)
+            .except_for(used_words)
             .map(|i| {
                 self.column_indexes.push(i);
                 let iter = self.fill_middle_slot(words, slot + 1).into_iter();
@@ -71,39 +81,15 @@ impl Inner {
     fn fill_last_slot<'a>(&mut self, words: &'a [&'a str]) -> Vec<Solution> {
         let start = (0..4).map(|i| &words[self.column_indexes[i]][4..5]);
         let start = String::from_iter(start);
+        let used_words = self.used_words();
+
         range_for(words, &start)
+            .except_for(used_words)
             .map(|i| {
                 self.row_indexes.push(i);
-                let k = if self.is_valid(words) {
-                    let sols = match self.last_column(words) {
-                        Some(last_column) => {
-                            let mut columns = self.column_indexes.clone();
-                            columns.push(last_column);
-                            vec![
-                                Solution::new(
-                                    columns
-                                        .iter()
-                                        .map(|&i| words[i])
-                                        .collect::<Vec<_>>()
-                                        .try_into()
-                                        .unwrap(),
-                                ),
-                                Solution::new(
-                                    self.row_indexes
-                                        .iter()
-                                        .map(|&i| words[i])
-                                        .collect::<Vec<_>>()
-                                        .try_into()
-                                        .unwrap(),
-                                ),
-                            ]
-                        }
-                        None => Vec::new(),
-                    };
-
-                    sols.into_iter()
-                } else {
-                    vec![].into_iter()
+                let k = match self.is_valid(words) {
+                    Some(sols) => sols.into_iter(),
+                    None => vec![].into_iter(),
                 };
                 self.row_indexes.pop();
                 k
@@ -112,23 +98,36 @@ impl Inner {
             .collect()
     }
 
-    fn is_valid<'a>(&self, words: &'a [&'a str]) -> bool {
-        match self.last_column(words) {
-            Some(last_col) => {
-                if range_for(words, &words[last_col]).len() != 1 {
-                    return false;
-                }
-                let mut w = [
-                    self.row_indexes.clone(),
-                    self.column_indexes.clone(),
-                    vec![last_col],
-                ]
-                .concat();
-                w.sort();
-                w.dedup();
-                w.len() == 10
-            }
-            None => false,
+    fn is_valid<'a>(&self, words: &'a [&'a str]) -> Option<Vec<Solution>> {
+        let last_col = self.last_column(words)?;
+        if range_for(words, &words[last_col]).len() != 1 {
+            return None;
+        }
+
+        let w = [self.row_indexes.clone(), self.column_indexes.clone()].concat();
+        if !w.contains(&last_col) {
+            let mut columns = self.column_indexes.clone();
+            columns.push(last_col);
+            Some(vec![
+                Solution::new(
+                    columns
+                        .iter()
+                        .map(|&i| words[i])
+                        .collect::<Vec<_>>()
+                        .try_into()
+                        .unwrap(),
+                ),
+                Solution::new(
+                    self.row_indexes
+                        .iter()
+                        .map(|&i| words[i])
+                        .collect::<Vec<_>>()
+                        .try_into()
+                        .unwrap(),
+                ),
+            ])
+        } else {
+            None
         }
     }
 
@@ -145,6 +144,10 @@ impl Inner {
             None
         }
     }
+
+    fn used_words(&self) -> Vec<usize> {
+        Vec::from([self.row_indexes.clone(), self.column_indexes.clone()].concat())
+    }
 }
 
 impl<'a> DoubleSidedFinder<'a> {
@@ -152,7 +155,7 @@ impl<'a> DoubleSidedFinder<'a> {
         self.words
             .iter()
             .enumerate()
-            .map(|(i, word)| {
+            .map(|(i, _)| {
                 let mut inner = Inner::new(i);
                 inner.fill_first_column(&self.words).into_iter()
             })
@@ -172,6 +175,57 @@ impl<'a> SolutionFinder<'a> for DoubleSidedFinder<'a> {
         self.find_solutions()
     }
 }
+
+struct ExceptFor<I>
+where
+    I: Iterator<Item = usize>,
+{
+    skip_values: Peekable<std::vec::IntoIter<usize>>,
+    underlying: I,
+}
+
+impl<I> Iterator for ExceptFor<I>
+where
+    I: Iterator<Item = usize>,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        'outer: while let Some(next) = self.underlying.next() {
+            while let Some(next_skip) = self.skip_values.peek() {
+                match next_skip.cmp(&next) {
+                    std::cmp::Ordering::Less => {
+                        self.skip_values.next();
+                        continue;
+                    }
+                    std::cmp::Ordering::Equal => {
+                        continue 'outer;
+                    }
+                    std::cmp::Ordering::Greater => break,
+                }
+            }
+            return Some(next);
+        }
+        None
+    }
+}
+
+trait ExceptForExt: Iterator<Item = usize> {
+    fn except_for(self, values: Vec<usize>) -> ExceptFor<Self>
+    where
+        Self: Sized,
+    {
+        let mut values = values;
+        values.sort();
+        let k = values.into_iter().peekable();
+        ExceptFor {
+            skip_values: k,
+            underlying: self,
+        }
+    }
+}
+
+impl<I: Iterator<Item = usize>> ExceptForExt for I {}
 
 #[cfg(test)]
 mod test {
