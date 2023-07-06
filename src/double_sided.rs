@@ -146,7 +146,12 @@ impl Inner {
     }
 
     fn used_words(&self) -> Vec<usize> {
-        Vec::from([self.row_indexes.clone(), self.column_indexes.clone()].concat())
+        Vec::from_iter(
+            self.row_indexes
+                .iter()
+                .chain(self.column_indexes.iter())
+                .copied(),
+        )
     }
 }
 
