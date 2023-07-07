@@ -5,9 +5,11 @@ use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIter
 
 use crate::{range_for_ascii, Solution, SolutionFinder};
 
+type Word<'a> = &'a AsciiStr;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DoubleSidedFinder<'a> {
-    words: Vec<&'a AsciiStr>,
+    words: Vec<Word<'a>>,
 }
 
 struct Inner {
@@ -25,7 +27,7 @@ impl Inner {
         }
     }
 
-    fn fill_first_column<'a>(&mut self, words: &'a [&'a AsciiStr]) -> Vec<Solution> {
+    fn fill_first_column<'a>(&mut self, words: &'a [Word<'a>]) -> Vec<Solution> {
         let starting_index = self.row_indexes[0];
         range_for_ascii(words, &words[self.row_indexes[0]][0..1])
             .filter(|&i| i > starting_index)
@@ -39,7 +41,7 @@ impl Inner {
             .collect()
     }
 
-    fn fill_middle_slot<'a>(&mut self, words: &'a [&'a AsciiStr], slot: usize) -> Vec<Solution> {
+    fn fill_middle_slot<'a>(&mut self, words: &'a [Word<'a>], slot: usize) -> Vec<Solution> {
         if slot == 4 {
             return self.fill_last_slot(words);
         }
@@ -56,7 +58,7 @@ impl Inner {
             .collect()
     }
 
-    fn fill_middle_column<'a>(&mut self, words: &'a [&'a AsciiStr], slot: usize) -> Vec<Solution> {
+    fn fill_middle_column<'a>(&mut self, words: &'a [Word<'a>], slot: usize) -> Vec<Solution> {
         let start = (0..slot + 1).map(|i| &words[self.row_indexes[i]][slot..slot + 1]);
         let start = AsciiString::from_iter(start);
         range_for_ascii(words, &start)
@@ -70,7 +72,7 @@ impl Inner {
             .collect()
     }
 
-    fn fill_last_slot<'a>(&mut self, words: &'a [&'a AsciiStr]) -> Vec<Solution> {
+    fn fill_last_slot<'a>(&mut self, words: &'a [Word<'a>]) -> Vec<Solution> {
         let start = (0..4).map(|i| &words[self.column_indexes[i]][4..5]);
         let start = AsciiString::from_iter(start);
         range_for_ascii(words, &start)
@@ -114,7 +116,7 @@ impl Inner {
             .collect()
     }
 
-    fn is_valid<'a>(&self, words: &'a [&'a AsciiStr]) -> bool {
+    fn is_valid<'a>(&self, words: &'a [Word<'a>]) -> bool {
         match self.last_column(words) {
             Some(last_col) => {
                 if range_for_ascii(words, &words[last_col]).len() != 1 {
@@ -134,11 +136,11 @@ impl Inner {
         }
     }
 
-    fn last_column<'a>(&self, words: &'a [&'a AsciiStr]) -> Option<usize> {
+    fn last_column<'a>(&self, words: &'a [Word<'a>]) -> Option<usize> {
         let range = range_for_ascii(
             words,
             &(0..5)
-                .map(|row| &words[self.row_indexes[row]][4..5])
+                .map(|row| &words[self.row_indexes[row]][4])
                 .collect::<AsciiString>(),
         );
         if range.len() == 1 {
@@ -154,7 +156,7 @@ impl<'a> DoubleSidedFinder<'a> {
         self.words
             .iter()
             .enumerate()
-            .map(|(i, word)| {
+            .map(|(i, _)| {
                 let mut inner = Inner::new(i);
                 inner.fill_first_column(&self.words).into_iter()
             })

@@ -20,6 +20,7 @@ pub trait SolutionFinder<'a> {
     fn find(&self) -> Vec<Solution>;
 }
 
+#[allow(dead_code)]
 fn range_for(words: &[&str], new_word: &str) -> std::ops::Range<usize> {
     let start = words.partition_point(|word| word < &new_word);
     let end = words.partition_point(|word| word.starts_with(new_word) || word < &new_word);
