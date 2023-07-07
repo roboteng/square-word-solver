@@ -1,11 +1,13 @@
+use ascii::{AsciiStr, AsciiString};
+use itertools::Itertools;
 #[allow(unused_imports)]
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-use crate::{range_for, Solution, SolutionFinder};
+use crate::{range_for_ascii, Solution, SolutionFinder};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DoubleSidedFinder<'a> {
-    words: Vec<&'a str>,
+    words: Vec<&'a AsciiStr>,
 }
 
 struct Inner {
@@ -23,9 +25,9 @@ impl Inner {
         }
     }
 
-    fn fill_first_column<'a>(&mut self, words: &'a [&'a str]) -> Vec<Solution> {
+    fn fill_first_column<'a>(&mut self, words: &'a [&'a AsciiStr]) -> Vec<Solution> {
         let starting_index = self.row_indexes[0];
-        range_for(words, &words[*&self.row_indexes[0]][0..1])
+        range_for_ascii(words, &words[self.row_indexes[0]][0..1])
             .filter(|&i| i > starting_index)
             .map(|i| {
                 self.column_indexes.push(i);
@@ -37,13 +39,13 @@ impl Inner {
             .collect()
     }
 
-    fn fill_middle_slot<'a>(&mut self, words: &'a [&'a str], slot: usize) -> Vec<Solution> {
+    fn fill_middle_slot<'a>(&mut self, words: &'a [&'a AsciiStr], slot: usize) -> Vec<Solution> {
         if slot == 4 {
             return self.fill_last_slot(words);
         }
         let start = (0..slot).map(|col| &words[self.column_indexes[col]][slot..slot + 1]);
-        let start = String::from_iter(start);
-        range_for(words, &start)
+        let start = AsciiString::from_iter(start);
+        range_for_ascii(words, &start)
             .map(|i| {
                 self.row_indexes.push(i);
                 let iter = self.fill_middle_column(words, slot).into_iter();
@@ -54,10 +56,10 @@ impl Inner {
             .collect()
     }
 
-    fn fill_middle_column<'a>(&mut self, words: &'a [&'a str], slot: usize) -> Vec<Solution> {
+    fn fill_middle_column<'a>(&mut self, words: &'a [&'a AsciiStr], slot: usize) -> Vec<Solution> {
         let start = (0..slot + 1).map(|i| &words[self.row_indexes[i]][slot..slot + 1]);
-        let start = String::from_iter(start);
-        range_for(words, &start)
+        let start = AsciiString::from_iter(start);
+        range_for_ascii(words, &start)
             .map(|i| {
                 self.column_indexes.push(i);
                 let iter = self.fill_middle_slot(words, slot + 1).into_iter();
@@ -68,10 +70,10 @@ impl Inner {
             .collect()
     }
 
-    fn fill_last_slot<'a>(&mut self, words: &'a [&'a str]) -> Vec<Solution> {
+    fn fill_last_slot<'a>(&mut self, words: &'a [&'a AsciiStr]) -> Vec<Solution> {
         let start = (0..4).map(|i| &words[self.column_indexes[i]][4..5]);
-        let start = String::from_iter(start);
-        range_for(words, &start)
+        let start = AsciiString::from_iter(start);
+        range_for_ascii(words, &start)
             .map(|i| {
                 self.row_indexes.push(i);
                 let k = if self.is_valid(words) {
@@ -112,10 +114,10 @@ impl Inner {
             .collect()
     }
 
-    fn is_valid<'a>(&self, words: &'a [&'a str]) -> bool {
+    fn is_valid<'a>(&self, words: &'a [&'a AsciiStr]) -> bool {
         match self.last_column(words) {
             Some(last_col) => {
-                if range_for(words, &words[last_col]).len() != 1 {
+                if range_for_ascii(words, &words[last_col]).len() != 1 {
                     return false;
                 }
                 let mut w = [
@@ -132,12 +134,12 @@ impl Inner {
         }
     }
 
-    fn last_column<'a>(&self, words: &'a [&'a str]) -> Option<usize> {
-        let range = range_for(
+    fn last_column<'a>(&self, words: &'a [&'a AsciiStr]) -> Option<usize> {
+        let range = range_for_ascii(
             words,
             &(0..5)
                 .map(|row| &words[self.row_indexes[row]][4..5])
-                .collect::<String>(),
+                .collect::<AsciiString>(),
         );
         if range.len() == 1 {
             Some(range.start)
@@ -162,8 +164,11 @@ impl<'a> DoubleSidedFinder<'a> {
 }
 
 impl<'a> SolutionFinder<'a> for DoubleSidedFinder<'a> {
-    fn new(words: &[&'a str]) -> Self {
-        let mut words = words.to_vec().clone();
+    fn new(words: &'a [&'a str]) -> Self {
+        let mut words = words
+            .iter()
+            .filter_map(|w| AsciiStr::from_ascii(w).ok())
+            .collect_vec();
         words.sort();
         Self { words }
     }
