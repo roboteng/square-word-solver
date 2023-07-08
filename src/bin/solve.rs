@@ -4,7 +4,7 @@ fn main() {
     let valid_words = get_words().unwrap();
     let valid_words: Vec<&str> = valid_words.iter().take(1800).map(|s| s.as_str()).collect();
 
-    find_solutions::<DoubleSidedFinder<'_>>(&valid_words);
+    find_solutions::<DoubleSidedFinder>(&valid_words);
 }
 
 fn find_solutions<'a, T>(words: &'a [&'a str])

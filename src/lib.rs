@@ -2,7 +2,7 @@
 #![feature(iter_intersperse)]
 #![feature(array_zip)]
 extern crate num_cpus;
-use ascii::{AsciiStr, AsciiString};
+use ascii::{AsAsciiStr, AsciiChar, AsciiStr, AsciiString};
 use builder::{AddedWord, SolutionBuilder};
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
@@ -27,10 +27,10 @@ fn range_for(words: &[&str], new_word: &str) -> std::ops::Range<usize> {
     start..end
 }
 
-fn range_for_ascii(words: &[&AsciiStr], new_word: &AsciiStr) -> std::ops::Range<usize> {
-    let start = words.partition_point(|word| word < &new_word);
+fn range_for_ascii(words: &[[AsciiChar; 5]], new_word: &[AsciiChar]) -> std::ops::Range<usize> {
+    let start = words.partition_point(|word| word.as_slice() < new_word);
     let end = words.partition_point(|word| {
-        word.as_slice().starts_with(new_word.as_slice()) || word < &new_word
+        word.as_slice().starts_with(new_word) || word.as_slice() < new_word
     });
     start..end
 }
