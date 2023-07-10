@@ -12,28 +12,30 @@ pub struct DoubleSidedFinder {
     words: Vec<Word>,
 }
 
-struct Inner {
+struct Inner<'a> {
     row_indexes: Vec<usize>,
     column_indexes: Vec<usize>,
+    words: &'a [Word],
 }
 
-impl Inner {
-    fn new(starting_index: usize) -> Self {
+impl<'a> Inner<'a> {
+    fn new(starting_index: usize, words: &'a [Word]) -> Self {
         let mut rows = Vec::with_capacity(5);
         rows.push(starting_index);
         Self {
             row_indexes: rows,
             column_indexes: Vec::with_capacity(5),
+            words,
         }
     }
 
-    fn fill_first_column<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
+    fn fill_first_column(&mut self) -> Vec<Solution> {
         let starting_index = self.row_indexes[0];
-        range_for_ascii(words, &words[self.row_indexes[0]][0..1])
+        range_for_ascii(self.words, &self.words[self.row_indexes[0]][0..1])
             .filter(|&i| i > starting_index)
             .map(|i| {
                 self.column_indexes.push(i);
-                let iter = self.fill_row_1(words).into_iter();
+                let iter = self.fill_row_1().into_iter();
                 self.column_indexes.pop();
                 iter
             })
@@ -41,46 +43,45 @@ impl Inner {
             .collect()
     }
 
-    fn fill_row_1<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
-        let start = [0].map(|col| words[self.column_indexes[col]][1]);
-        self.fill_middle_row_inner(words, &Self::fill_column_1, &start)
+    fn fill_row_1(&mut self) -> Vec<Solution> {
+        let start = [0].map(|col| self.words[self.column_indexes[col]][1]);
+        self.fill_middle_row_inner(&Self::fill_column_1, &start)
     }
 
-    fn fill_column_1<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
-        let start = [0, 1].map(|i| words[self.row_indexes[i]][1]);
-        self.fill_middle_column_inner(words, &Self::fill_row_2, &start)
+    fn fill_column_1(&mut self) -> Vec<Solution> {
+        let start = [0, 1].map(|i| self.words[self.row_indexes[i]][1]);
+        self.fill_middle_column_inner(&Self::fill_row_2, &start)
     }
 
-    fn fill_row_2<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
-        let start = [0, 1].map(|col| words[self.column_indexes[col]][2]);
-        self.fill_middle_row_inner(words, &Self::fill_column_2, &start)
+    fn fill_row_2(&mut self) -> Vec<Solution> {
+        let start = [0, 1].map(|col| self.words[self.column_indexes[col]][2]);
+        self.fill_middle_row_inner(&Self::fill_column_2, &start)
     }
 
-    fn fill_column_2<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
-        let start = [0, 1, 2].map(|i| words[self.row_indexes[i]][2]);
-        self.fill_middle_column_inner(words, &Self::fill_row_3, &start)
+    fn fill_column_2(&mut self) -> Vec<Solution> {
+        let start = [0, 1, 2].map(|i| self.words[self.row_indexes[i]][2]);
+        self.fill_middle_column_inner(&Self::fill_row_3, &start)
     }
 
-    fn fill_row_3<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
-        let start = [0, 1, 2].map(|col| words[self.column_indexes[col]][3]);
-        self.fill_middle_row_inner(words, &Self::fill_column_3, &start)
+    fn fill_row_3(&mut self) -> Vec<Solution> {
+        let start = [0, 1, 2].map(|col| self.words[self.column_indexes[col]][3]);
+        self.fill_middle_row_inner(&Self::fill_column_3, &start)
     }
 
-    fn fill_column_3<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
-        let start = [0, 1, 2, 3].map(|i| words[self.row_indexes[i]][3]);
-        self.fill_middle_column_inner(words, &Self::fill_last_slot, &start)
+    fn fill_column_3(&mut self) -> Vec<Solution> {
+        let start = [0, 1, 2, 3].map(|i| self.words[self.row_indexes[i]][3]);
+        self.fill_middle_column_inner(&Self::fill_last_slot, &start)
     }
 
-    fn fill_middle_row_inner<'a>(
+    fn fill_middle_row_inner(
         &mut self,
-        words: &'a [Word],
-        func: &dyn Fn(&mut Self, &[Word]) -> Vec<Solution>,
+        func: &dyn Fn(&mut Self) -> Vec<Solution>,
         start: &[AsciiChar],
     ) -> Vec<Solution> {
-        range_for_ascii(words, start)
+        range_for_ascii(self.words, start)
             .map(|i| {
                 self.row_indexes.push(i);
-                let iter = func(self, words).into_iter();
+                let iter = func(self).into_iter();
                 self.row_indexes.pop();
                 iter
             })
@@ -88,16 +89,15 @@ impl Inner {
             .collect()
     }
 
-    fn fill_middle_column_inner<'a>(
+    fn fill_middle_column_inner(
         &mut self,
-        words: &'a [Word],
-        func: &dyn Fn(&mut Self, &[Word]) -> Vec<Solution>,
+        func: &dyn Fn(&mut Self) -> Vec<Solution>,
         start: &[AsciiChar],
     ) -> Vec<Solution> {
-        range_for_ascii(words, start)
+        range_for_ascii(self.words, start)
             .map(|i| {
                 self.column_indexes.push(i);
-                let iter = func(self, words).into_iter();
+                let iter = func(self).into_iter();
                 self.column_indexes.pop();
                 iter
             })
@@ -105,14 +105,14 @@ impl Inner {
             .collect()
     }
 
-    fn fill_last_slot<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
-        let start = [0, 1, 2, 3].map(|i| words[self.column_indexes[i]][4]);
+    fn fill_last_slot(&mut self) -> Vec<Solution> {
+        let start = [0, 1, 2, 3].map(|i| self.words[self.column_indexes[i]][4]);
 
-        range_for_ascii(words, &start)
+        range_for_ascii(self.words, &start)
             .map(|i| {
                 self.row_indexes.push(i);
-                let k = if self.is_valid(words) {
-                    let sols = match self.last_column(words) {
+                let k = if self.is_valid() {
+                    let sols = match self.last_column() {
                         Some(last_column) => {
                             let mut columns = self.column_indexes.clone();
                             columns.push(last_column);
@@ -120,7 +120,7 @@ impl Inner {
                                 Solution::new(
                                     columns
                                         .iter()
-                                        .map(|&i| words[i].as_ascii_str().unwrap())
+                                        .map(|&i| self.words[i].as_ascii_str().unwrap())
                                         .collect::<Vec<_>>()
                                         .try_into()
                                         .unwrap(),
@@ -128,7 +128,7 @@ impl Inner {
                                 Solution::new(
                                     self.row_indexes
                                         .iter()
-                                        .map(|&i| words[i].as_ascii_str().unwrap())
+                                        .map(|&i| self.words[i].as_ascii_str().unwrap())
                                         .collect::<Vec<_>>()
                                         .try_into()
                                         .unwrap(),
@@ -149,10 +149,10 @@ impl Inner {
             .collect()
     }
 
-    fn is_valid<'a>(&self, words: &'a [Word]) -> bool {
-        match self.last_column(words) {
+    fn is_valid(&self) -> bool {
+        match self.last_column() {
             Some(last_col) => {
-                if range_for_ascii(words, words[last_col].as_slice()).len() != 1 {
+                if range_for_ascii(self.words, self.words[last_col].as_slice()).len() != 1 {
                     return false;
                 }
                 let mut w = [
@@ -169,11 +169,11 @@ impl Inner {
         }
     }
 
-    fn last_column<'a>(&self, words: &'a [Word]) -> Option<usize> {
+    fn last_column(&self) -> Option<usize> {
         let range = range_for_ascii(
-            words,
+            self.words,
             (0..5)
-                .map(|row| words[self.row_indexes[row]][4])
+                .map(|row| self.words[self.row_indexes[row]][4])
                 .collect::<Vec<AsciiChar>>()
                 .as_slice(),
         );
@@ -191,8 +191,8 @@ impl<'a> DoubleSidedFinder {
             .iter()
             .enumerate()
             .map(|(i, _)| {
-                let mut inner = Inner::new(i);
-                inner.fill_first_column(&self.words).into_iter()
+                let mut inner = Inner::new(i, &self.words);
+                inner.fill_first_column().into_iter()
             })
             .flatten()
             .collect::<Vec<_>>()
