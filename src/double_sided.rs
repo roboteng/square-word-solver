@@ -33,7 +33,7 @@ impl Inner {
             .filter(|&i| i > starting_index)
             .map(|i| {
                 self.column_indexes.push(i);
-                let iter = self.fill_middle_slot(words, 1).into_iter();
+                let iter = self.fill_row_1(words).into_iter();
                 self.column_indexes.pop();
                 iter
             })
@@ -41,18 +41,46 @@ impl Inner {
             .collect()
     }
 
-    fn fill_middle_slot<'a>(&mut self, words: &'a [Word], slot: usize) -> Vec<Solution> {
-        if slot == 4 {
-            return self.fill_last_slot(words);
-        }
-        let s = (0..slot)
-            .map(|col| words[self.column_indexes[col]][slot])
-            .collect_vec();
-        let start = s.as_slice();
+    fn fill_row_1<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
+        let start = [0].map(|col| words[self.column_indexes[col]][1]);
+        self.fill_middle_row_inner(words, &Self::fill_column_1, &start)
+    }
+
+    fn fill_column_1<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
+        let start = [0, 1].map(|i| words[self.row_indexes[i]][1]);
+        self.fill_middle_column_inner(words, &Self::fill_row_2, &start)
+    }
+
+    fn fill_row_2<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
+        let start = [0, 1].map(|col| words[self.column_indexes[col]][2]);
+        self.fill_middle_row_inner(words, &Self::fill_column_2, &start)
+    }
+
+    fn fill_column_2<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
+        let start = [0, 1, 2].map(|i| words[self.row_indexes[i]][2]);
+        self.fill_middle_column_inner(words, &Self::fill_row_3, &start)
+    }
+
+    fn fill_row_3<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
+        let start = [0, 1, 2].map(|col| words[self.column_indexes[col]][3]);
+        self.fill_middle_row_inner(words, &Self::fill_column_3, &start)
+    }
+
+    fn fill_column_3<'a>(&mut self, words: &'a [Word]) -> Vec<Solution> {
+        let start = [0, 1, 2, 3].map(|i| words[self.row_indexes[i]][3]);
+        self.fill_middle_column_inner(words, &Self::fill_last_slot, &start)
+    }
+
+    fn fill_middle_row_inner<'a>(
+        &mut self,
+        words: &'a [Word],
+        func: &dyn Fn(&mut Self, &[Word]) -> Vec<Solution>,
+        start: &[AsciiChar],
+    ) -> Vec<Solution> {
         range_for_ascii(words, start)
             .map(|i| {
                 self.row_indexes.push(i);
-                let iter = self.fill_middle_column(words, slot).into_iter();
+                let iter = func(self, words).into_iter();
                 self.row_indexes.pop();
                 iter
             })
@@ -60,15 +88,16 @@ impl Inner {
             .collect()
     }
 
-    fn fill_middle_column<'a>(&mut self, words: &'a [Word], slot: usize) -> Vec<Solution> {
-        let s = (0..slot + 1)
-            .map(|i| words[self.row_indexes[i]][slot])
-            .collect_vec();
-        let start = s.as_slice();
+    fn fill_middle_column_inner<'a>(
+        &mut self,
+        words: &'a [Word],
+        func: &dyn Fn(&mut Self, &[Word]) -> Vec<Solution>,
+        start: &[AsciiChar],
+    ) -> Vec<Solution> {
         range_for_ascii(words, start)
             .map(|i| {
                 self.column_indexes.push(i);
-                let iter = self.fill_middle_slot(words, slot + 1).into_iter();
+                let iter = func(self, words).into_iter();
                 self.column_indexes.pop();
                 iter
             })
