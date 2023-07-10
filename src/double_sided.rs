@@ -54,11 +54,27 @@ impl<'a> Inner<'a> {
     }
 
     fn fill_row_2(&mut self) -> Vec<Solution> {
+        let unfinished_columns =
+            [2, 3, 4].map(|col| [0, 1].map(|row| self.words[self.row_indexes[row]][col]));
+        for column in unfinished_columns {
+            let range = range_for_ascii(self.words, &column);
+            if range.len() == 0 {
+                return Vec::new();
+            }
+        }
         let start = [0, 1].map(|col| self.words[self.column_indexes[col]][2]);
         self.fill_middle_row_inner(&Self::fill_column_2, &start)
     }
 
     fn fill_column_2(&mut self) -> Vec<Solution> {
+        let unfinished_rows =
+            [3, 4].map(|row| [0, 1].map(|col| self.words[self.column_indexes[col]][row]));
+        for row in unfinished_rows {
+            let range = range_for_ascii(self.words, &row);
+            if range.len() == 0 {
+                return Vec::new();
+            }
+        }
         let start = [0, 1, 2].map(|i| self.words[self.row_indexes[i]][2]);
         self.fill_middle_column_inner(&Self::fill_row_3, &start)
     }
