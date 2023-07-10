@@ -2,7 +2,7 @@
 #![feature(iter_intersperse)]
 #![feature(array_zip)]
 extern crate num_cpus;
-use ascii::{AsAsciiStr, AsciiChar, AsciiStr, AsciiString};
+use ascii::{AsciiChar, AsciiString};
 use builder::{AddedWord, SolutionBuilder};
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;

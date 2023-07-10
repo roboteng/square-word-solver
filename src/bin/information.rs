@@ -13,7 +13,7 @@ fn main() {
         .lines()
         .map(|line| {
             Solution::new(
-                line.split(",")
+                line.split(',')
                     .map(|word| AsciiString::from_ascii(word).unwrap())
                     .collect::<Vec<_>>()
                     .try_into()
@@ -49,9 +49,7 @@ fn main() {
                     }
                 }
             }
-            let score: f64 = counts
-                .iter()
-                .map(|(_, count)| -(*count as f64 / n).log2() / *count as f64)
+            let score: f64 = counts.values().map(|count| -(*count as f64 / n).log2() / *count as f64)
                 .sum::<f64>();
             score
         };

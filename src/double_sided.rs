@@ -33,13 +33,12 @@ impl<'a> Inner<'a> {
         let starting_index = self.row_indexes[0];
         range_for_ascii(self.words, &self.words[self.row_indexes[0]][0..1])
             .filter(|&i| i > starting_index)
-            .map(|i| {
+            .flat_map(|i| {
                 self.column_indexes.push(i);
                 let iter = self.fill_row_1().into_iter();
                 self.column_indexes.pop();
                 iter
             })
-            .flatten()
             .collect()
     }
 
@@ -58,7 +57,7 @@ impl<'a> Inner<'a> {
             [2, 3, 4].map(|col| [0, 1].map(|row| self.words[self.row_indexes[row]][col]));
         for column in unfinished_columns {
             let range = range_for_ascii(self.words, &column);
-            if range.len() == 0 {
+            if range.is_empty() {
                 return Vec::new();
             }
         }
@@ -71,7 +70,7 @@ impl<'a> Inner<'a> {
             [3, 4].map(|row| [0, 1].map(|col| self.words[self.column_indexes[col]][row]));
         for row in unfinished_rows {
             let range = range_for_ascii(self.words, &row);
-            if range.len() == 0 {
+            if range.is_empty() {
                 return Vec::new();
             }
         }
@@ -95,13 +94,12 @@ impl<'a> Inner<'a> {
         start: &[AsciiChar],
     ) -> Vec<Solution> {
         range_for_ascii(self.words, start)
-            .map(|i| {
+            .flat_map(|i| {
                 self.row_indexes.push(i);
                 let iter = func(self).into_iter();
                 self.row_indexes.pop();
                 iter
             })
-            .flatten()
             .collect()
     }
 
@@ -111,13 +109,12 @@ impl<'a> Inner<'a> {
         start: &[AsciiChar],
     ) -> Vec<Solution> {
         range_for_ascii(self.words, start)
-            .map(|i| {
+            .flat_map(|i| {
                 self.column_indexes.push(i);
                 let iter = func(self).into_iter();
                 self.column_indexes.pop();
                 iter
             })
-            .flatten()
             .collect()
     }
 
@@ -125,7 +122,7 @@ impl<'a> Inner<'a> {
         let start = [0, 1, 2, 3].map(|i| self.words[self.column_indexes[i]][4]);
 
         range_for_ascii(self.words, &start)
-            .map(|i| {
+            .flat_map(|i| {
                 self.row_indexes.push(i);
                 let k = if self.is_valid() {
                     let sols = match self.last_column() {
@@ -161,7 +158,6 @@ impl<'a> Inner<'a> {
                 self.row_indexes.pop();
                 k
             })
-            .flatten()
             .collect()
     }
 
@@ -201,16 +197,15 @@ impl<'a> Inner<'a> {
     }
 }
 
-impl<'a> DoubleSidedFinder {
+impl DoubleSidedFinder {
     fn find_solutions(&self) -> Vec<Solution> {
         self.words
             .iter()
             .enumerate()
-            .map(|(i, _)| {
+            .flat_map(|(i, _)| {
                 let mut inner = Inner::new(i, &self.words);
                 inner.fill_first_column().into_iter()
             })
-            .flatten()
             .collect::<Vec<_>>()
     }
 }

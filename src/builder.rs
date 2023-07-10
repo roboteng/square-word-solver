@@ -247,7 +247,7 @@ mod test {
         fn fails() -> Result<(), AddError> {
             // contains hydra twice
             let words: Vec<&str> = "which,hydra,odium,arose,sates,whoas,hydra,idiot,cruse,hames"
-                .split(",")
+                .split(',')
                 .collect();
             let list = WordList::new(words);
             let mut builder = SolutionBuilder::new(&list);

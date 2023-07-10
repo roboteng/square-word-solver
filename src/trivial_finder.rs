@@ -44,8 +44,7 @@ fn solution_validator<'a>(words: &'a [&'a str], candidate: &'a [&'a str]) -> Opt
         .collect::<Vec<String>>();
 
     let iter = candidate
-        .iter()
-        .map(|&w| w)
+        .iter().copied()
         .chain(columns.iter().map(|w| w.deref()));
 
     if iter.clone().any(|w| !words.contains(&w)) {
