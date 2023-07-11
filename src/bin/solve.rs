@@ -1,10 +1,10 @@
-use square_word::{double_sided::DoubleSidedFinder, *};
+use square_word::{double_sided::DoubleSidedFinderMT, *};
 
 fn main() {
     let valid_words = get_words().unwrap();
-    let valid_words: Vec<&str> = valid_words.iter().take(1800).map(|s| s.as_str()).collect();
+    let valid_words: Vec<&str> = valid_words.iter().map(|s| s.as_str()).collect();
 
-    find_solutions::<DoubleSidedFinder>(&valid_words);
+    find_solutions::<DoubleSidedFinderMT>(&valid_words);
 }
 
 fn find_solutions<'a, T>(words: &'a [&'a str])
@@ -13,8 +13,7 @@ where
 {
     let t = T::new(words);
     let solutions = t.find();
-    for sol in solutions.iter() {
+    for sol in solutions {
         println!("{sol}");
     }
-    println!("{} solutions", solutions.len());
 }

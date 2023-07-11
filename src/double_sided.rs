@@ -8,7 +8,12 @@ use crate::{range_for_ascii, Solution, SolutionFinder};
 type Word = [AsciiChar; 5];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DoubleSidedFinder {
+pub struct DoubleSidedFinderMT {
+    words: Vec<Word>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DoubleSidedFinderST {
     words: Vec<Word>,
 }
 
@@ -197,7 +202,41 @@ impl<'a> Inner<'a> {
     }
 }
 
-impl DoubleSidedFinder {
+impl DoubleSidedFinderMT {
+    fn find_solutions(&self) -> Vec<Solution> {
+        self.words
+            .iter()
+            .enumerate()
+            .collect::<Vec<_>>()
+            .par_iter()
+            .flat_map(|(i, _)| {
+                let mut inner = Inner::new(*i, &self.words);
+                inner.fill_first_column().into_par_iter()
+            })
+            .collect::<Vec<_>>()
+    }
+}
+
+impl<'a> SolutionFinder<'a> for DoubleSidedFinderMT {
+    fn new(words: &'a [&'a str]) -> Self {
+        let mut words = words
+            .iter()
+            .filter_map(|w| AsciiStr::from_ascii(w).ok())
+            .filter_map(|w| {
+                let k = w.chars().collect::<Vec<_>>();
+                k.try_into().ok()
+            })
+            .collect_vec();
+        words.sort();
+        Self { words }
+    }
+
+    fn find(&self) -> Vec<Solution> {
+        self.find_solutions()
+    }
+}
+
+impl DoubleSidedFinderST {
     fn find_solutions(&self) -> Vec<Solution> {
         self.words
             .iter()
@@ -210,7 +249,7 @@ impl DoubleSidedFinder {
     }
 }
 
-impl<'a> SolutionFinder<'a> for DoubleSidedFinder {
+impl<'a> SolutionFinder<'a> for DoubleSidedFinderST {
     fn new(words: &'a [&'a str]) -> Self {
         let mut words = words
             .iter()
@@ -239,7 +278,7 @@ mod test {
             "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
             "erode",
         ];
-        let f = DoubleSidedFinder::new(&words);
+        let f = DoubleSidedFinderMT::new(&words);
         let sols = f.find();
         println!("{sols:?}");
         assert_eq!(sols.len(), 2);

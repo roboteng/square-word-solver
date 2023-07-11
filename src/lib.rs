@@ -192,7 +192,7 @@ fn find_subsolutions<'a>(
 
 #[cfg(test)]
 mod my_test {
-    use crate::{double_sided::DoubleSidedFinder, solver::Puzzle, trivial_finder::TrivialFinder};
+    use crate::{double_sided::DoubleSidedFinderMT, solver::Puzzle, trivial_finder::TrivialFinder};
     use pretty_assertions::assert_eq;
 
     use super::*;
@@ -395,7 +395,7 @@ mod my_test {
             k.find()
         };
         let double = {
-            let k = DoubleSidedFinder::new(&words);
+            let k = DoubleSidedFinderMT::new(&words);
             k.find()
         };
         assert_eq!(first, double);
@@ -409,7 +409,7 @@ mod my_test {
         ];
 
         let double = {
-            let k = DoubleSidedFinder::new(&words);
+            let k = DoubleSidedFinderMT::new(&words);
             let mut sol = k.find();
             sol.sort();
             sol

@@ -1,4 +1,4 @@
-use crate::{double_sided::DoubleSidedFinder, First, SolutionFinder};
+use crate::{double_sided::DoubleSidedFinderMT, First, SolutionFinder};
 
 use proptest::{prelude::*, sample::subsequence};
 
@@ -8,7 +8,7 @@ proptest! {
     #[ignore = "costly"]
     #[test]
     fn s(k in my_words()) {
-        let a = DoubleSidedFinder::new(&k);
+        let a = DoubleSidedFinderMT::new(&k);
         let b = First::new(&k);
 
         let a = a.find();
@@ -31,7 +31,7 @@ proptest! {
             l.find()
         };
         let double = {
-            let l = DoubleSidedFinder::new(&k);
+            let l = DoubleSidedFinderMT::new(&k);
             l.find()
         };
         assert_eq!(first, double);
