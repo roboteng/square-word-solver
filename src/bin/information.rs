@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use ascii::AsciiString;
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use square_word::{
-    solver::{Puzzle, PuzzleViewModel},
+    finder::{Puzzle, PuzzleViewModel},
     Solution,
 };
 
@@ -49,7 +49,9 @@ fn main() {
                     }
                 }
             }
-            let score: f64 = counts.values().map(|count| -(*count as f64 / n).log2() / *count as f64)
+            let score: f64 = counts
+                .values()
+                .map(|count| -(*count as f64 / n).log2() / *count as f64)
                 .sum::<f64>();
             score
         };

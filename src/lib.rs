@@ -3,16 +3,17 @@
 #![feature(array_zip)]
 extern crate num_cpus;
 use ascii::{AsciiChar, AsciiString};
-use builder::{AddedWord, SolutionBuilder};
-use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use builder::AddedWord;
+use finder::{Puzzle, PuzzleViewModel};
 use regex::Regex;
-use solver::{Puzzle, PuzzleViewModel};
 use std::io;
+use std::str::FromStr;
 use std::{collections::HashMap, fmt::Display, fs::File, io::Read, path::Path};
 
 mod builder;
 pub mod double_sided;
-pub mod solver;
+pub mod finder;
+pub mod top_down_finder;
 pub mod trivial_finder;
 
 pub trait SolutionFinder<'a> {
@@ -33,24 +34,6 @@ fn range_for_ascii(words: &[[AsciiChar; 5]], new_word: &[AsciiChar]) -> std::ops
         word.as_slice().starts_with(new_word) || word.as_slice() < new_word
     });
     start..end
-}
-
-pub struct First<'a> {
-    word_list: WordList,
-    words: &'a [&'a str],
-}
-
-impl<'a> SolutionFinder<'a> for First<'a> {
-    fn new(words: &'a [&'a str]) -> Self {
-        Self {
-            word_list: WordList::new(words.to_vec()),
-            words,
-        }
-    }
-
-    fn find(&self) -> Vec<Solution> {
-        find_solutions_new(&self.word_list, &self.words.to_vec())
-    }
 }
 
 pub fn get_words() -> Result<Vec<String>, io::Error> {
@@ -109,6 +92,14 @@ impl Display for Solution {
     }
 }
 
+impl FromStr for Solution {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        todo!()
+    }
+}
+
 pub struct WordList {
     words: HashMap<char, Box<WordList>>,
 }
@@ -150,49 +141,15 @@ impl WordList {
     }
 }
 
-pub fn find_solutions_new<'a>(
-    possible_columns: &WordList,
-    possible_rows: &'a Vec<&'a str>,
-) -> Vec<Solution> {
-    let k = possible_rows
-        .par_iter()
-        .filter_map(|word| {
-            let mut builder = SolutionBuilder::new(possible_columns);
-            builder.add(word).ok()?;
-            let sols = find_subsolutions(possible_rows, &mut builder);
-            Some(sols.into_par_iter())
-        })
-        .flatten()
-        .collect();
-
-    k
-}
-
-fn find_subsolutions<'a>(
-    possible_rows: &'a Vec<&'a str>,
-    builder: &mut SolutionBuilder<'a>,
-) -> Vec<Solution> {
-    let mut solutions = vec![];
-    for word in possible_rows.iter() {
-        match builder.add(word) {
-            Ok(AddedWord::Incomplete) => {
-                let mut sols = find_subsolutions(possible_rows, builder);
-                solutions.append(&mut sols);
-                builder.pop().unwrap();
-            }
-            Ok(AddedWord::Finished(sols)) => {
-                solutions.append(&mut Vec::from(*sols));
-                builder.pop().unwrap();
-            }
-            Err(_) => {}
-        };
-    }
-    solutions
-}
-
 #[cfg(test)]
 mod my_test {
-    use crate::{double_sided::DoubleSidedFinderMT, solver::Puzzle, trivial_finder::TrivialFinder};
+    use crate::{
+        builder::SolutionBuilder,
+        double_sided::DoubleSidedFinderMT,
+        finder::Puzzle,
+        top_down_finder::{find_subsolutions, TopDownFinder},
+        trivial_finder::TrivialFinder,
+    };
     use pretty_assertions::assert_eq;
 
     use super::*;
@@ -391,7 +348,7 @@ mod my_test {
         ];
 
         let first = {
-            let k = First::new(&words);
+            let k = TopDownFinder::new(&words);
             k.find()
         };
         let double = {
@@ -433,7 +390,7 @@ mod my_test {
         ];
 
         let first = {
-            let k = First::new(&words);
+            let k = TopDownFinder::new(&words);
             let mut sol = k.find();
             sol.sort();
             sol

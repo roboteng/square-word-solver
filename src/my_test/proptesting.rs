@@ -1,4 +1,4 @@
-use crate::{double_sided::DoubleSidedFinderMT, First, SolutionFinder};
+use crate::{double_sided::DoubleSidedFinderMT, top_down_finder::TopDownFinder, SolutionFinder};
 
 use proptest::{prelude::*, sample::subsequence};
 
@@ -9,7 +9,7 @@ proptest! {
     #[test]
     fn s(k in my_words()) {
         let a = DoubleSidedFinderMT::new(&k);
-        let b = First::new(&k);
+        let b = TopDownFinder::new(&k);
 
         let a = a.find();
         let b = b.find();
@@ -27,7 +27,7 @@ proptest! {
     fn diferent(k in short_words()) {
 
         let first = {
-            let l = First::new(&k);
+            let l = TopDownFinder::new(&k);
             l.find()
         };
         let double = {

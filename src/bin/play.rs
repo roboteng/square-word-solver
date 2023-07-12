@@ -1,7 +1,7 @@
 use std::{fs::read_to_string, io::stdin};
 
 use ascii::{AsciiChar, AsciiString};
-use square_word::{solver::Puzzle, Solution};
+use square_word::{finder::Puzzle, Solution};
 
 fn main() {
     let lines = read_to_string("./solutions.txt").unwrap();
