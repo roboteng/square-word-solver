@@ -13,6 +13,7 @@ use std::{collections::HashMap, fmt::Display, fs::File, io::Read, path::Path};
 mod builder;
 pub mod double_sided;
 pub mod finder;
+pub mod solver;
 pub mod top_down_finder;
 pub mod trivial_finder;
 
@@ -96,7 +97,17 @@ impl FromStr for Solution {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        todo!()
+        let words = s
+            .split(',')
+            .filter_map(|w| AsciiString::from_ascii(w).ok())
+            .collect::<Vec<AsciiString>>();
+        if words.len() == 5 {
+            Ok(Self {
+                rows: words.try_into().unwrap(),
+            })
+        } else {
+            Err(())
+        }
     }
 }
 
