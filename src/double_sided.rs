@@ -3,9 +3,7 @@ use itertools::Itertools;
 #[allow(unused_imports)]
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-use crate::{range_for_ascii, Solution, SolutionFinder};
-
-type Word = [AsciiChar; 5];
+use crate::{range_for_ascii, Solution, SolutionFinder, Word};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DoubleSidedFinderMT {
@@ -36,60 +34,63 @@ impl<'a> Inner<'a> {
 
     fn fill_first_column(&mut self) -> Vec<Solution> {
         let starting_index = self.row_indexes[0];
-        range_for_ascii(self.words, &self.words[self.row_indexes[0]][0..1])
-            .filter(|&i| i > starting_index)
-            .flat_map(|i| {
-                self.column_indexes.push(i);
-                let iter = self.fill_row_1().into_iter();
-                self.column_indexes.pop();
-                iter
-            })
-            .collect()
+        range_for_ascii(
+            self.words,
+            self.words[self.row_indexes[0]].0[0..1].try_into().unwrap(),
+        )
+        .filter(|&i| i > starting_index)
+        .flat_map(|i| {
+            self.column_indexes.push(i);
+            let iter = self.fill_row_1().into_iter();
+            self.column_indexes.pop();
+            iter
+        })
+        .collect()
     }
 
     fn fill_row_1(&mut self) -> Vec<Solution> {
-        let start = [0].map(|col| self.words[self.column_indexes[col]][1]);
+        let start = [0].map(|col| self.words[self.column_indexes[col]].0[1]);
         self.fill_middle_row_inner(&Self::fill_column_1, &start)
     }
 
     fn fill_column_1(&mut self) -> Vec<Solution> {
-        let start = [0, 1].map(|i| self.words[self.row_indexes[i]][1]);
+        let start = [0, 1].map(|i| self.words[self.row_indexes[i]].0[1]);
         self.fill_middle_column_inner(&Self::fill_row_2, &start)
     }
 
     fn fill_row_2(&mut self) -> Vec<Solution> {
         let unfinished_columns =
-            [2, 3, 4].map(|col| [0, 1].map(|row| self.words[self.row_indexes[row]][col]));
+            [2, 3, 4].map(|col| [0, 1].map(|row| self.words[self.row_indexes[row]].0[col]));
         for column in unfinished_columns {
             let range = range_for_ascii(self.words, &column);
             if range.is_empty() {
                 return Vec::new();
             }
         }
-        let start = [0, 1].map(|col| self.words[self.column_indexes[col]][2]);
+        let start = [0, 1].map(|col| self.words[self.column_indexes[col]].0[2]);
         self.fill_middle_row_inner(&Self::fill_column_2, &start)
     }
 
     fn fill_column_2(&mut self) -> Vec<Solution> {
         let unfinished_rows =
-            [3, 4].map(|row| [0, 1].map(|col| self.words[self.column_indexes[col]][row]));
+            [3, 4].map(|row| [0, 1].map(|col| self.words[self.column_indexes[col]].0[row]));
         for row in unfinished_rows {
             let range = range_for_ascii(self.words, &row);
             if range.is_empty() {
                 return Vec::new();
             }
         }
-        let start = [0, 1, 2].map(|i| self.words[self.row_indexes[i]][2]);
+        let start = [0, 1, 2].map(|i| self.words[self.row_indexes[i]].0[2]);
         self.fill_middle_column_inner(&Self::fill_row_3, &start)
     }
 
     fn fill_row_3(&mut self) -> Vec<Solution> {
-        let start = [0, 1, 2].map(|col| self.words[self.column_indexes[col]][3]);
+        let start = [0, 1, 2].map(|col| self.words[self.column_indexes[col]].0[3]);
         self.fill_middle_row_inner(&Self::fill_column_3, &start)
     }
 
     fn fill_column_3(&mut self) -> Vec<Solution> {
-        let start = [0, 1, 2, 3].map(|i| self.words[self.row_indexes[i]][3]);
+        let start = [0, 1, 2, 3].map(|i| self.words[self.row_indexes[i]].0[3]);
         self.fill_middle_column_inner(&Self::fill_last_slot, &start)
     }
 
@@ -124,7 +125,7 @@ impl<'a> Inner<'a> {
     }
 
     fn fill_last_slot(&mut self) -> Vec<Solution> {
-        let start = [0, 1, 2, 3].map(|i| self.words[self.column_indexes[i]][4]);
+        let start = [0, 1, 2, 3].map(|i| self.words[self.column_indexes[i]].0[4]);
 
         range_for_ascii(self.words, &start)
             .flat_map(|i| {
@@ -138,7 +139,7 @@ impl<'a> Inner<'a> {
                                 Solution::new(
                                     columns
                                         .iter()
-                                        .map(|&i| self.words[i].as_ascii_str().unwrap())
+                                        .map(|&i| self.words[i].0.as_ascii_str().unwrap())
                                         .collect::<Vec<_>>()
                                         .try_into()
                                         .unwrap(),
@@ -146,7 +147,7 @@ impl<'a> Inner<'a> {
                                 Solution::new(
                                     self.row_indexes
                                         .iter()
-                                        .map(|&i| self.words[i].as_ascii_str().unwrap())
+                                        .map(|&i| self.words[i].0.as_ascii_str().unwrap())
                                         .collect::<Vec<_>>()
                                         .try_into()
                                         .unwrap(),
@@ -169,7 +170,7 @@ impl<'a> Inner<'a> {
     fn is_valid(&self) -> bool {
         match self.last_column() {
             Some(last_col) => {
-                if range_for_ascii(self.words, self.words[last_col].as_slice()).len() != 1 {
+                if range_for_ascii(self.words, self.words[last_col].0.as_slice()).len() != 1 {
                     return false;
                 }
                 let mut w = [
@@ -190,7 +191,7 @@ impl<'a> Inner<'a> {
         let range = range_for_ascii(
             self.words,
             (0..5)
-                .map(|row| self.words[self.row_indexes[row]][4])
+                .map(|row| self.words[self.row_indexes[row]].0[4])
                 .collect::<Vec<AsciiChar>>()
                 .as_slice(),
         );

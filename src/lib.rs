@@ -17,6 +17,25 @@ pub mod solver;
 pub mod top_down_finder;
 pub mod trivial_finder;
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct Word([AsciiChar; 5]);
+
+impl TryFrom<&[AsciiChar]> for Word {
+    type Error = ();
+
+    fn try_from(value: &[AsciiChar]) -> Result<Self, Self::Error> {
+        let k = value.try_into().map_err(|_| ())?;
+        Ok(Self(k))
+    }
+}
+
+impl From<Vec<AsciiChar>> for Word {
+    fn from(value: Vec<AsciiChar>) -> Self {
+        let k = value.try_into().map_err(|_| ()).unwrap();
+        Self(k)
+    }
+}
+
 pub trait SolutionFinder<'a> {
     fn new(words: &'a [&'a str]) -> Self;
     fn find(&self) -> Vec<Solution>;
@@ -29,10 +48,10 @@ fn range_for(words: &[&str], new_word: &str) -> std::ops::Range<usize> {
     start..end
 }
 
-fn range_for_ascii(words: &[[AsciiChar; 5]], new_word: &[AsciiChar]) -> std::ops::Range<usize> {
-    let start = words.partition_point(|word| word.as_slice() < new_word);
+fn range_for_ascii(words: &[Word], new_word: &[AsciiChar]) -> std::ops::Range<usize> {
+    let start = words.partition_point(|word| word.0.as_slice() < new_word);
     let end = words.partition_point(|word| {
-        word.as_slice().starts_with(new_word) || word.as_slice() < new_word
+        word.0.as_slice().starts_with(&new_word) || word.0.as_slice() < new_word
     });
     start..end
 }
