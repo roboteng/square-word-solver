@@ -37,7 +37,7 @@ fn main() {
                 match AsciiString::from_ascii(guess) {
                     Ok(g) => {
                         if g.len() == 5 {
-                            g
+                            g.into()
                         } else {
                             println!("it has to be five letters");
                             continue;

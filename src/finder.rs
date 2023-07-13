@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use ascii::{AsciiChar, AsciiString};
 use itertools::Itertools;
 
-use crate::Solution;
+use crate::{Solution, Word};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LetterPlayed {
@@ -16,7 +16,7 @@ pub enum LetterPlayed {
 
 pub struct Puzzle {
     solution: Solution,
-    guesses: Vec<AsciiString>,
+    guesses: Vec<Word>,
 }
 
 impl Puzzle {
@@ -40,7 +40,7 @@ impl Puzzle {
         }
     }
 
-    fn guesses(&self) -> Vec<AsciiString> {
+    fn guesses(&self) -> Vec<Word> {
         self.guesses.clone()
     }
 
@@ -53,9 +53,9 @@ impl Puzzle {
     fn grid(&self) -> [[Option<AsciiChar>; 5]; 5] {
         let mut arr = [[None; 5]; 5];
         for (y, row) in self.solution.rows.iter().enumerate() {
-            for (x, &ch) in row.into_iter().enumerate() {
+            for (x, ch) in row.0.into_iter().enumerate() {
                 for word in &self.guesses {
-                    if ch == word[x] {
+                    if ch == word.0[x] {
                         arr[y][x] = Some(ch);
                     }
                 }
@@ -76,21 +76,21 @@ impl Puzzle {
             .solution
             .rows
             .iter()
-            .flat_map(|word| word.chars())
+            .flat_map(|word| word.0.into_iter())
             .collect::<Vec<_>>();
 
         let letters_in_hints = hints
             .iter()
-            .flat_map(|word| word.chars())
+            .flat_map(|word| word.into_iter())
             .collect::<Vec<_>>();
 
         BTreeMap::from_iter(
             self.guesses
                 .iter()
-                .flat_map(|word| word.chars())
+                .flat_map(|word| word.0.iter().copied())
                 .map(|letter| {
                     let is_letter_in_solution = if letters_in_solution.contains(&letter) {
-                        if letters_in_hints.contains(&letter) {
+                        if letters_in_hints.contains(&&letter) {
                             LetterPlayed::PartiallyUsed
                         } else {
                             LetterPlayed::AllUsed
@@ -103,29 +103,25 @@ impl Puzzle {
         )
     }
 
-    pub fn guess(&mut self, guess: AsciiString) {
+    pub fn guess(&mut self, guess: Word) {
         self.guesses.push(guess);
     }
 }
 
-fn row_hint(
-    row: AsciiString,
-    known_letters: [Option<AsciiChar>; 5],
-    guesses: Vec<AsciiString>,
-) -> AsciiString {
+fn row_hint(row: Word, known_letters: [Option<AsciiChar>; 5], guesses: Vec<Word>) -> AsciiString {
     let possible_hints = row
+        .0
         .into_iter()
         .zip(known_letters.iter())
         .filter_map(|(letter, known)| match known {
             Some(_) => None,
             None => Some(letter),
         })
-        .copied()
         .collect::<Vec<_>>();
 
     guesses
         .iter()
-        .flat_map(|word| word.chars())
+        .flat_map(|word| word.0.iter())
         .unique()
         .filter(|letter| possible_hints.contains(letter))
         .collect()
@@ -133,7 +129,7 @@ fn row_hint(
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, PartialOrd, Ord)]
 pub struct PuzzleViewModel {
-    pub guesses: Vec<AsciiString>,
+    pub guesses: Vec<Word>,
     pub is_finished: bool,
     pub grid: [[Option<AsciiChar>; 5]; 5],
     pub hints: [AsciiString; 5],
@@ -159,10 +155,10 @@ mod test {
     fn after_guessing_arose() {
         let mut puzzle = Puzzle::new(Solution::new(["grime", "honor", "outdo", "steed", "terse"]));
 
-        puzzle.guess(AsciiString::from_ascii("arose").unwrap());
+        puzzle.guess("arose".into());
 
         let expected = PuzzleViewModel {
-            guesses: vec![AsciiString::from_ascii("arose").unwrap()],
+            guesses: vec!["arose".into()],
             is_finished: false,
             grid: [
                 [None, Some(AsciiChar::r), None, None, Some(AsciiChar::e)],
@@ -198,17 +194,17 @@ mod test {
     fn after_guessing_four_times() {
         let mut puzzle = Puzzle::new(Solution::new(["grime", "honor", "outdo", "steed", "terse"]));
 
-        puzzle.guess(AsciiString::from_ascii("grime").unwrap());
-        puzzle.guess(AsciiString::from_ascii("honor").unwrap());
-        puzzle.guess(AsciiString::from_ascii("outdo").unwrap());
-        puzzle.guess(AsciiString::from_ascii("steed").unwrap());
+        puzzle.guess(AsciiString::from_ascii("grime").unwrap().into());
+        puzzle.guess(AsciiString::from_ascii("honor").unwrap().into());
+        puzzle.guess(AsciiString::from_ascii("outdo").unwrap().into());
+        puzzle.guess(AsciiString::from_ascii("steed").unwrap().into());
 
         let expected = PuzzleViewModel {
             guesses: vec![
-                AsciiString::from_ascii("grime").unwrap(),
-                AsciiString::from_ascii("honor").unwrap(),
-                AsciiString::from_ascii("outdo").unwrap(),
-                AsciiString::from_ascii("steed").unwrap(),
+                AsciiString::from_ascii("grime").unwrap().into(),
+                AsciiString::from_ascii("honor").unwrap().into(),
+                AsciiString::from_ascii("outdo").unwrap().into(),
+                AsciiString::from_ascii("steed").unwrap().into(),
             ],
             is_finished: false,
             grid: [
@@ -277,19 +273,19 @@ mod test {
     fn full_solution() {
         let mut puzzle = Puzzle::new(Solution::new(["grime", "honor", "outdo", "steed", "terse"]));
 
-        puzzle.guess(AsciiString::from_ascii("grime").unwrap());
-        puzzle.guess(AsciiString::from_ascii("honor").unwrap());
-        puzzle.guess(AsciiString::from_ascii("outdo").unwrap());
-        puzzle.guess(AsciiString::from_ascii("steed").unwrap());
-        puzzle.guess(AsciiString::from_ascii("terse").unwrap());
+        puzzle.guess(AsciiString::from_ascii("grime").unwrap().into());
+        puzzle.guess(AsciiString::from_ascii("honor").unwrap().into());
+        puzzle.guess(AsciiString::from_ascii("outdo").unwrap().into());
+        puzzle.guess(AsciiString::from_ascii("steed").unwrap().into());
+        puzzle.guess(AsciiString::from_ascii("terse").unwrap().into());
 
         let expected = PuzzleViewModel {
             guesses: vec![
-                AsciiString::from_ascii("grime").unwrap(),
-                AsciiString::from_ascii("honor").unwrap(),
-                AsciiString::from_ascii("outdo").unwrap(),
-                AsciiString::from_ascii("steed").unwrap(),
-                AsciiString::from_ascii("terse").unwrap(),
+                AsciiString::from_ascii("grime").unwrap().into(),
+                AsciiString::from_ascii("honor").unwrap().into(),
+                AsciiString::from_ascii("outdo").unwrap().into(),
+                AsciiString::from_ascii("steed").unwrap().into(),
+                AsciiString::from_ascii("terse").unwrap().into(),
             ],
             is_finished: true,
             grid: [

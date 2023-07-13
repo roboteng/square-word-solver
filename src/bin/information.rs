@@ -26,15 +26,15 @@ fn main() {
     let possible_answers = include_str!("../../words.txt");
     let possible_answers = possible_answers
         .lines()
-        .map(|word| AsciiString::from_ascii(word).unwrap())
-        .collect::<Vec<_>>();
+        .map(|word| word.into())
+        .collect::<Vec<&str>>();
 
-    let scores = possible_answers.par_iter().map(|word| {
+    let scores = possible_answers.par_iter().map(|&word| {
         let score = {
             let mut counts: BTreeMap<PuzzleViewModel, usize> = BTreeMap::new();
             for actual_answer in solutions.iter() {
                 let mut puzzle = Puzzle::new(actual_answer.clone());
-                puzzle.guess(word.to_owned());
+                puzzle.guess(word.into());
                 let view = puzzle.view();
 
                 for possible_answer in solutions.iter() {

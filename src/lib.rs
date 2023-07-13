@@ -2,7 +2,7 @@
 #![feature(iter_intersperse)]
 #![feature(array_zip)]
 extern crate num_cpus;
-use ascii::{AsciiChar, AsciiString};
+use ascii::{AsciiChar, AsciiStr, AsciiString};
 use builder::AddedWord;
 use finder::{Puzzle, PuzzleViewModel};
 use regex::Regex;
@@ -18,21 +18,63 @@ pub mod top_down_finder;
 pub mod trivial_finder;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct Word([AsciiChar; 5]);
+pub struct Word([AsciiChar; 5]);
 
-impl TryFrom<&[AsciiChar]> for Word {
-    type Error = ();
+impl From<&str> for Word {
+    fn from(value: &str) -> Self {
+        let k = value
+            .chars()
+            .map(|c| AsciiChar::from_ascii(c).unwrap())
+            .collect::<Vec<AsciiChar>>();
+        Self(k.try_into().unwrap())
+    }
+}
 
-    fn try_from(value: &[AsciiChar]) -> Result<Self, Self::Error> {
-        let k = value.try_into().map_err(|_| ())?;
-        Ok(Self(k))
+impl From<String> for Word {
+    fn from(value: String) -> Self {
+        let k = value
+            .chars()
+            .map(|c| AsciiChar::from_ascii(c).unwrap())
+            .collect::<Vec<AsciiChar>>();
+        Self(k.try_into().unwrap())
+    }
+}
+
+impl From<AsciiString> for Word {
+    fn from(value: AsciiString) -> Self {
+        Self(
+            value
+                .chars()
+                .map(|ch| AsciiChar::from(ch))
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+        )
+    }
+}
+
+impl From<&AsciiStr> for Word {
+    fn from(value: &AsciiStr) -> Self {
+        Self(
+            value
+                .chars()
+                .map(|ch| AsciiChar::from(ch))
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+        )
     }
 }
 
 impl From<Vec<AsciiChar>> for Word {
     fn from(value: Vec<AsciiChar>) -> Self {
-        let k = value.try_into().map_err(|_| ()).unwrap();
-        Self(k)
+        Self(value.try_into().unwrap())
+    }
+}
+
+impl From<Word> for String {
+    fn from(value: Word) -> Self {
+        String::from_iter(value.0.iter().map(|ch| ch.as_char()))
     }
 }
 
@@ -76,13 +118,13 @@ pub fn five_letter_words(string: &str) -> Vec<String> {
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct Solution {
-    pub rows: [AsciiString; 5],
+    pub rows: [Word; 5],
 }
 
 impl Solution {
-    pub fn new<S: AsRef<str>>(rows: [S; 5]) -> Self {
+    pub fn new<S: Into<Word>>(rows: [S; 5]) -> Self {
         Self {
-            rows: rows.map(|s| AsciiString::from_ascii(s.as_ref()).unwrap()),
+            rows: rows.map(|s| s.into()),
         }
     }
 
@@ -122,7 +164,12 @@ impl FromStr for Solution {
             .collect::<Vec<AsciiString>>();
         if words.len() == 5 {
             Ok(Self {
-                rows: words.try_into().unwrap(),
+                rows: words
+                    .iter()
+                    .map(|s| Word::from(s.clone()))
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap(),
             })
         } else {
             Err(())
@@ -261,7 +308,7 @@ mod my_test {
         let tester = Solution::new(["small", "movie", "irate", "loser", "entry"]);
         let answer = Solution::new(["small", "movie", "alive", "stark", "hones"]);
         let mut puzzle = Puzzle::new(answer);
-        puzzle.guess(AsciiString::from_ascii("ricky").unwrap());
+        puzzle.guess(AsciiString::from_ascii("ricky").unwrap().into());
         let view = puzzle.view();
 
         let actual = tester.does_match(&view);
