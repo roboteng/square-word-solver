@@ -42,27 +42,13 @@ impl From<String> for Word {
 
 impl From<AsciiString> for Word {
     fn from(value: AsciiString) -> Self {
-        Self(
-            value
-                .chars()
-                .map(|ch| AsciiChar::from(ch))
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap(),
-        )
+        Self(value.chars().collect::<Vec<_>>().try_into().unwrap())
     }
 }
 
 impl From<&AsciiStr> for Word {
     fn from(value: &AsciiStr) -> Self {
-        Self(
-            value
-                .chars()
-                .map(|ch| AsciiChar::from(ch))
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap(),
-        )
+        Self(value.chars().collect::<Vec<_>>().try_into().unwrap())
     }
 }
 
@@ -93,7 +79,7 @@ fn range_for(words: &[&str], new_word: &str) -> std::ops::Range<usize> {
 fn range_for_ascii(words: &[Word], new_word: &[AsciiChar]) -> std::ops::Range<usize> {
     let start = words.partition_point(|word| word.0.as_slice() < new_word);
     let end = words.partition_point(|word| {
-        word.0.as_slice().starts_with(&new_word) || word.0.as_slice() < new_word
+        word.0.as_slice().starts_with(new_word) || word.0.as_slice() < new_word
     });
     start..end
 }

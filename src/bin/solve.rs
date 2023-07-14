@@ -1,10 +1,16 @@
-use square_word::{double_sided::DoubleSidedFinderMT, *};
+use std::env::args;
+
+use square_word::{double_sided::*, get_words, SolutionFinder};
 
 fn main() {
     let valid_words = get_words().unwrap();
-    let valid_words: Vec<&str> = valid_words.iter().map(|s| s.as_str()).collect();
+    let n = args()
+        .nth(1)
+        .map(|s| s.parse().unwrap_or(valid_words.len()))
+        .unwrap_or(valid_words.len());
+    let valid_words: Vec<&str> = valid_words.iter().take(n).map(|s| s.as_str()).collect();
 
-    find_solutions::<DoubleSidedFinderMT>(&valid_words);
+    find_solutions::<DoubleSidedFinderST>(&valid_words);
 }
 
 fn find_solutions<'a, T>(words: &'a [&'a str])

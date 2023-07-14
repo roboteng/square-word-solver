@@ -1,5 +1,4 @@
-use ascii::AsciiString;
-
+#![allow(dead_code, unused)]
 use crate::{finder::Puzzle, Word};
 
 fn next_guess(puzzle: &Puzzle) -> Word {

@@ -24,10 +24,7 @@ fn main() {
     let n = solutions.len() as f64;
 
     let possible_answers = include_str!("../../words.txt");
-    let possible_answers = possible_answers
-        .lines()
-        .map(|word| word.into())
-        .collect::<Vec<&str>>();
+    let possible_answers = possible_answers.lines().collect::<Vec<&str>>();
 
     let scores = possible_answers.par_iter().map(|&word| {
         let score = {
