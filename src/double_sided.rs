@@ -1,3 +1,5 @@
+use std::iter::Peekable;
+
 use ascii::{AsAsciiStr, AsciiChar, AsciiStr};
 use itertools::Itertools;
 #[allow(unused_imports)]
@@ -50,12 +52,18 @@ impl<'a> Inner<'a> {
 
     fn fill_row_1(&mut self) -> Vec<Solution> {
         let start = [0].map(|col| self.words[self.column_indexes[col]].0[1]);
-        self.fill_middle_row_inner(&Self::fill_column_1, &start)
+        let placed_words = [self.row_indexes[0], self.column_indexes[0]];
+        self.fill_middle_row_inner(&Self::fill_column_1, &start, placed_words)
     }
 
     fn fill_column_1(&mut self) -> Vec<Solution> {
         let start = [0, 1].map(|i| self.words[self.row_indexes[i]].0[1]);
-        self.fill_middle_column_inner(&Self::fill_row_2, &start)
+        let placed_words = [
+            self.row_indexes[0],
+            self.column_indexes[0],
+            self.row_indexes[1],
+        ];
+        self.fill_middle_column_inner(&Self::fill_row_2, &start, placed_words)
     }
 
     fn fill_row_2(&mut self) -> Vec<Solution> {
@@ -67,8 +75,14 @@ impl<'a> Inner<'a> {
                 return Vec::new();
             }
         }
+        let placed_words = [
+            self.row_indexes[0],
+            self.column_indexes[0],
+            self.row_indexes[1],
+            self.column_indexes[1],
+        ];
         let start = [0, 1].map(|col| self.words[self.column_indexes[col]].0[2]);
-        self.fill_middle_row_inner(&Self::fill_column_2, &start)
+        self.fill_middle_row_inner(&Self::fill_column_2, &start, placed_words)
     }
 
     fn fill_column_2(&mut self) -> Vec<Solution> {
@@ -80,26 +94,52 @@ impl<'a> Inner<'a> {
                 return Vec::new();
             }
         }
+        let placed_words = [
+            self.row_indexes[0],
+            self.column_indexes[0],
+            self.row_indexes[1],
+            self.column_indexes[1],
+            self.row_indexes[2],
+        ];
         let start = [0, 1, 2].map(|i| self.words[self.row_indexes[i]].0[2]);
-        self.fill_middle_column_inner(&Self::fill_row_3, &start)
+        self.fill_middle_column_inner(&Self::fill_row_3, &start, placed_words)
     }
 
     fn fill_row_3(&mut self) -> Vec<Solution> {
         let start = [0, 1, 2].map(|col| self.words[self.column_indexes[col]].0[3]);
-        self.fill_middle_row_inner(&Self::fill_column_3, &start)
+        let placed_words = [
+            self.row_indexes[0],
+            self.column_indexes[0],
+            self.row_indexes[1],
+            self.column_indexes[1],
+            self.row_indexes[2],
+            self.column_indexes[2],
+        ];
+        self.fill_middle_row_inner(&Self::fill_column_3, &start, placed_words)
     }
 
     fn fill_column_3(&mut self) -> Vec<Solution> {
         let start = [0, 1, 2, 3].map(|i| self.words[self.row_indexes[i]].0[3]);
-        self.fill_middle_column_inner(&Self::fill_last_slot, &start)
+        let placed_words = [
+            self.row_indexes[0],
+            self.column_indexes[0],
+            self.row_indexes[1],
+            self.column_indexes[1],
+            self.row_indexes[2],
+            self.column_indexes[2],
+            self.row_indexes[3],
+        ];
+        self.fill_middle_column_inner(&Self::fill_last_slot, &start, placed_words)
     }
 
-    fn fill_middle_row_inner(
+    fn fill_middle_row_inner<const N: usize>(
         &mut self,
         func: &dyn Fn(&mut Self) -> Vec<Solution>,
         start: &[AsciiChar],
+        placed_words: [usize; N],
     ) -> Vec<Solution> {
         range_for_ascii(self.words, start)
+            .except_for(placed_words)
             .flat_map(|i| {
                 self.row_indexes.push(i);
                 let iter = func(self).into_iter();
@@ -109,12 +149,14 @@ impl<'a> Inner<'a> {
             .collect()
     }
 
-    fn fill_middle_column_inner(
+    fn fill_middle_column_inner<const N: usize>(
         &mut self,
         func: &dyn Fn(&mut Self) -> Vec<Solution>,
         start: &[AsciiChar],
+        placed_words: [usize; N],
     ) -> Vec<Solution> {
         range_for_ascii(self.words, start)
+            .except_for(placed_words)
             .flat_map(|i| {
                 self.column_indexes.push(i);
                 let iter = func(self).into_iter();
@@ -173,15 +215,18 @@ impl<'a> Inner<'a> {
                 if range_for_ascii(self.words, self.words[last_col].0.as_slice()).len() != 1 {
                     return false;
                 }
-                let mut w = [
-                    self.row_indexes.clone(),
-                    self.column_indexes.clone(),
-                    vec![last_col],
-                ]
-                .concat();
-                w.sort();
-                w.dedup();
-                w.len() == 10
+                // let mut w = [
+                //     self.row_indexes.clone(),
+                //     self.column_indexes.clone(),
+                //     vec![last_col],
+                // ]
+                // .concat();
+                // w.sort();
+                // w.dedup();
+                // w.len() == 10
+                ![self.row_indexes.clone(), self.column_indexes.clone()]
+                    .concat()
+                    .contains(&last_col)
             }
             None => false,
         }
@@ -268,6 +313,56 @@ impl<'a> SolutionFinder<'a> for DoubleSidedFinderST {
         self.find_solutions()
     }
 }
+
+struct ExceptFor<I, const N: usize>
+where
+    I: Iterator<Item = usize>,
+{
+    skip_values: Peekable<std::array::IntoIter<usize, N>>,
+    underlying: I,
+}
+
+impl<I, const N: usize> Iterator for ExceptFor<I, N>
+where
+    I: Iterator<Item = usize>,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        'outer: while let Some(next) = self.underlying.next() {
+            while let Some(next_skip) = self.skip_values.peek() {
+                match next_skip.cmp(&next) {
+                    std::cmp::Ordering::Less => {
+                        self.skip_values.next();
+                        continue;
+                    }
+                    std::cmp::Ordering::Equal => {
+                        continue 'outer;
+                    }
+                    std::cmp::Ordering::Greater => break,
+                }
+            }
+            return Some(next);
+        }
+        None
+    }
+}
+
+trait ExceptForExt<const N: usize>: Iterator<Item = usize> {
+    fn except_for(self, mut values: [usize; N]) -> ExceptFor<Self, N>
+    where
+        Self: Sized,
+    {
+        values.sort();
+        let k = values.into_iter().peekable();
+        ExceptFor {
+            skip_values: k,
+            underlying: self,
+        }
+    }
+}
+
+impl<I: Iterator<Item = usize>, const N: usize> ExceptForExt<N> for I {}
 
 #[cfg(test)]
 mod test {
