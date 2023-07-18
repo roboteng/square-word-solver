@@ -1,6 +1,6 @@
 use std::env::args;
 
-use square_word::{double_sided::*, get_words, SolutionFinder};
+use square_word::{double_sided::*, get_words, BinSearchRange, SolutionFinder};
 
 fn main() {
     let valid_words = get_words().unwrap();
@@ -10,7 +10,7 @@ fn main() {
         .unwrap_or(valid_words.len());
     let valid_words: Vec<&str> = valid_words.iter().take(n).map(|s| s.as_str()).collect();
 
-    find_solutions::<DoubleSidedFinderST>(&valid_words);
+    find_solutions::<DoubleSidedFinderST<BinSearchRange>>(&valid_words);
 }
 
 fn find_solutions<'a, T>(words: &'a [&'a str])

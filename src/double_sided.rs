@@ -5,16 +5,18 @@ use itertools::Itertools;
 #[allow(unused_imports)]
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-use crate::{range_for_ascii, Solution, SolutionFinder, Word};
+use crate::{range_for_ascii, RangeFinder, Solution, SolutionFinder, Word};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DoubleSidedFinderMT {
+pub struct DoubleSidedFinderMT<R: RangeFinder + Send + Sync> {
     words: Vec<Word>,
+    range_finder: R,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DoubleSidedFinderST {
+pub struct DoubleSidedFinderST<R: RangeFinder + Send + Sync> {
     words: Vec<Word>,
+    range_finder: R,
 }
 
 struct Inner<'a> {
@@ -215,15 +217,7 @@ impl<'a> Inner<'a> {
                 if range_for_ascii(self.words, self.words[last_col].0.as_slice()).len() != 1 {
                     return false;
                 }
-                // let mut w = [
-                //     self.row_indexes.clone(),
-                //     self.column_indexes.clone(),
-                //     vec![last_col],
-                // ]
-                // .concat();
-                // w.sort();
-                // w.dedup();
-                // w.len() == 10
+
                 ![self.row_indexes.clone(), self.column_indexes.clone()]
                     .concat()
                     .contains(&last_col)
@@ -248,7 +242,7 @@ impl<'a> Inner<'a> {
     }
 }
 
-impl DoubleSidedFinderMT {
+impl<'a, R: RangeFinder + Send + Sync> DoubleSidedFinderMT<R> {
     fn find_solutions(&self) -> Vec<Solution> {
         self.words
             .iter()
@@ -263,7 +257,7 @@ impl DoubleSidedFinderMT {
     }
 }
 
-impl<'a> SolutionFinder<'a> for DoubleSidedFinderMT {
+impl<'a, R: RangeFinder + Send + Sync> SolutionFinder<'a> for DoubleSidedFinderMT<R> {
     fn new(words: &'a [&'a str]) -> Self {
         let mut words = words
             .iter()
@@ -274,7 +268,10 @@ impl<'a> SolutionFinder<'a> for DoubleSidedFinderMT {
             })
             .collect_vec();
         words.sort();
-        Self { words }
+        Self {
+            range_finder: R::init(&words),
+            words,
+        }
     }
 
     fn find(&self) -> Vec<Solution> {
@@ -282,7 +279,7 @@ impl<'a> SolutionFinder<'a> for DoubleSidedFinderMT {
     }
 }
 
-impl DoubleSidedFinderST {
+impl<'a, R: RangeFinder + Send + Sync> DoubleSidedFinderST<R> {
     fn find_solutions(&self) -> Vec<Solution> {
         self.words
             .iter()
@@ -295,7 +292,7 @@ impl DoubleSidedFinderST {
     }
 }
 
-impl<'a> SolutionFinder<'a> for DoubleSidedFinderST {
+impl<'a, R: RangeFinder + Send + Sync> SolutionFinder<'a> for DoubleSidedFinderST<R> {
     fn new(words: &'a [&'a str]) -> Self {
         let mut words = words
             .iter()
@@ -306,7 +303,10 @@ impl<'a> SolutionFinder<'a> for DoubleSidedFinderST {
             })
             .collect_vec();
         words.sort();
-        Self { words }
+        Self {
+            range_finder: R::init(&words),
+            words,
+        }
     }
 
     fn find(&self) -> Vec<Solution> {
@@ -366,6 +366,8 @@ impl<I: Iterator<Item = usize>, const N: usize> ExceptForExt<N> for I {}
 
 #[cfg(test)]
 mod test {
+    use crate::BinSearchRange;
+
     use super::*;
 
     #[test]
@@ -374,7 +376,7 @@ mod test {
             "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
             "erode",
         ];
-        let f = DoubleSidedFinderMT::new(&words);
+        let f = DoubleSidedFinderMT::<BinSearchRange>::new(&words);
         let sols = f.find();
         println!("{sols:?}");
         assert_eq!(sols.len(), 2);

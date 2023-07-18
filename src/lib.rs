@@ -69,11 +69,28 @@ pub trait SolutionFinder<'a> {
     fn find(&self) -> Vec<Solution>;
 }
 
+pub trait RangeFinder {
+    fn init(words: &[Word]) -> Self;
+    fn range(&self, new_word: &[AsciiChar]) -> std::ops::Range<usize>;
+}
+
 #[allow(dead_code)]
 fn range_for(words: &[&str], new_word: &str) -> std::ops::Range<usize> {
     let start = words.partition_point(|word| word < &new_word);
     let end = words.partition_point(|word| word.starts_with(new_word) || word < &new_word);
     start..end
+}
+
+pub struct BinSearchRange(Vec<Word>);
+
+impl RangeFinder for BinSearchRange {
+    fn init(words: &[Word]) -> Self {
+        Self(Vec::from(words))
+    }
+
+    fn range(&self, new_word: &[AsciiChar]) -> std::ops::Range<usize> {
+        range_for_ascii(&self.0, new_word)
+    }
 }
 
 fn range_for_ascii(words: &[Word], new_word: &[AsciiChar]) -> std::ops::Range<usize> {
@@ -415,7 +432,7 @@ mod my_test {
             k.find()
         };
         let double = {
-            let k = DoubleSidedFinderMT::new(&words);
+            let k = DoubleSidedFinderMT::<BinSearchRange>::new(&words);
             k.find()
         };
         assert_eq!(first, double);
@@ -429,7 +446,7 @@ mod my_test {
         ];
 
         let double = {
-            let k = DoubleSidedFinderMT::new(&words);
+            let k = DoubleSidedFinderMT::<BinSearchRange>::new(&words);
             let mut sol = k.find();
             sol.sort();
             sol
