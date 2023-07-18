@@ -7,7 +7,9 @@ use builder::AddedWord;
 use finder::{Puzzle, PuzzleViewModel};
 use regex::Regex;
 use std::io;
+use std::ops::Deref;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display, fs::File, io::Read, path::Path};
 
 mod builder;
@@ -99,6 +101,27 @@ fn range_for_ascii(words: &[Word], new_word: &[AsciiChar]) -> std::ops::Range<us
         word.0.as_slice().starts_with(new_word) || word.0.as_slice() < new_word
     });
     start..end
+}
+
+pub struct HasSearchRange(HashMap<Arc<[AsciiChar]>, std::ops::Range<usize>>);
+
+impl RangeFinder for HasSearchRange {
+    fn init(words: &[Word]) -> Self {
+        let mut map = HashMap::new();
+        for end in 1..5 {
+            for word in words.iter() {
+                let start = &word.0[0..end];
+                let start: Arc<[AsciiChar]> = start.into();
+                let range = range_for_ascii(&words, start.deref());
+                map.insert(start, range);
+            }
+        }
+        Self(map)
+    }
+
+    fn range(&self, new_word: &[AsciiChar]) -> std::ops::Range<usize> {
+        self.0.get(new_word).unwrap_or(&(0..0)).clone()
+    }
 }
 
 pub fn get_words() -> Result<Vec<String>, io::Error> {
