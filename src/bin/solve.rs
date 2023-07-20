@@ -10,7 +10,7 @@ fn main() {
         .unwrap_or(valid_words.len());
     let valid_words: Vec<&str> = valid_words.iter().take(n).map(|s| s.as_str()).collect();
 
-    find_solutions::<DoubleSidedFinderST<HasSearchRange>>(&valid_words);
+    find_solutions::<DoubleSidedFinderMT<BinSearchRange>>(&valid_words);
 }
 
 fn find_solutions<'a, T>(words: &'a [&'a str])

@@ -7,9 +7,7 @@ use builder::AddedWord;
 use finder::{Puzzle, PuzzleViewModel};
 use regex::Regex;
 use std::io;
-use std::ops::Deref;
 use std::str::FromStr;
-use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display, fs::File, io::Read, path::Path};
 
 mod builder;
@@ -71,8 +69,8 @@ pub trait SolutionFinder<'a> {
     fn find(&self) -> Vec<Solution>;
 }
 
-pub trait RangeFinder {
-    fn init(words: &[Word]) -> Self;
+pub trait RangeFinder<'a> {
+    fn init(words: &'a [Word]) -> Self;
     fn range(&self, new_word: &[AsciiChar]) -> std::ops::Range<usize>;
 }
 
@@ -85,7 +83,7 @@ fn range_for(words: &[&str], new_word: &str) -> std::ops::Range<usize> {
 
 pub struct BinSearchRange(Vec<Word>);
 
-impl RangeFinder for BinSearchRange {
+impl<'a> RangeFinder<'a> for BinSearchRange {
     fn init(words: &[Word]) -> Self {
         Self(Vec::from(words))
     }
@@ -103,16 +101,16 @@ fn range_for_ascii(words: &[Word], new_word: &[AsciiChar]) -> std::ops::Range<us
     start..end
 }
 
-pub struct HasSearchRange(HashMap<Arc<[AsciiChar]>, std::ops::Range<usize>>);
+pub struct HasSearchRange(HashMap<AsciiString, std::ops::Range<usize>>);
 
-impl RangeFinder for HasSearchRange {
-    fn init(words: &[Word]) -> Self {
+impl<'a> RangeFinder<'a> for HasSearchRange {
+    fn init(words: &'a [Word]) -> Self {
         let mut map = HashMap::new();
         for end in 1..5 {
             for word in words.iter() {
-                let start = &word.0[0..end];
-                let start: Arc<[AsciiChar]> = start.into();
-                let range = range_for_ascii(&words, start.deref());
+                let start = AsciiString::from(&word.0[0..end]);
+                let start = start;
+                let range = range_for_ascii(&words, start.as_slice());
                 map.insert(start, range);
             }
         }
@@ -120,7 +118,10 @@ impl RangeFinder for HasSearchRange {
     }
 
     fn range(&self, new_word: &[AsciiChar]) -> std::ops::Range<usize> {
-        self.0.get(new_word).unwrap_or(&(0..0)).clone()
+        self.0
+            .get(&AsciiString::from(new_word))
+            .unwrap_or(&(0..0))
+            .clone()
     }
 }
 
