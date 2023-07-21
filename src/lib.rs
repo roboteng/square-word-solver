@@ -13,6 +13,7 @@ use std::{collections::HashMap, fmt::Display, fs::File, io::Read, path::Path};
 mod builder;
 pub mod double_sided;
 pub mod finder;
+pub mod first_guess;
 pub mod solver;
 pub mod top_down_finder;
 pub mod trivial_finder;
