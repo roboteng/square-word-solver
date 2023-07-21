@@ -18,7 +18,7 @@ pub mod solver;
 pub mod top_down_finder;
 pub mod trivial_finder;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Word([AsciiChar; 5]);
 
 impl From<&str> for Word {

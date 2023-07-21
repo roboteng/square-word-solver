@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use crate::{Solution, Word};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum LetterPlayed {
     NotPlayed,
     NotInSolution,
@@ -127,7 +127,7 @@ fn row_hint(row: Word, known_letters: [Option<AsciiChar>; 5], guesses: Vec<Word>
         .collect()
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
 pub struct PuzzleViewModel {
     pub guesses: Vec<Word>,
     pub is_finished: bool,
