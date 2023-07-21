@@ -64,14 +64,14 @@ impl Puzzle {
         arr
     }
 
-    fn hints(&self, grid: &[[Option<AsciiChar>; 5]; 5]) -> [AsciiString; 5] {
+    fn hints(&self, grid: &[[Option<AsciiChar>; 5]; 5]) -> [RowHint; 5] {
         [0, 1, 2, 3, 4]
             .zip(self.solution.rows.clone())
             // is there a better way to do something like array.enumerate here?
             .map(|(i, word)| row_hint(word, grid[i], self.guesses.clone()))
     }
 
-    fn alphabet(&self, hints: &[AsciiString]) -> BTreeMap<AsciiChar, LetterPlayed> {
+    fn alphabet(&self, hints: &[RowHint]) -> BTreeMap<AsciiChar, LetterPlayed> {
         let letters_in_solution = self
             .solution
             .rows
@@ -81,7 +81,7 @@ impl Puzzle {
 
         let letters_in_hints = hints
             .iter()
-            .flat_map(|word| word.into_iter())
+            .flat_map(|word| word.letters().into_iter())
             .collect::<Vec<_>>();
 
         BTreeMap::from_iter(
@@ -108,7 +108,31 @@ impl Puzzle {
     }
 }
 
-fn row_hint(row: Word, known_letters: [Option<AsciiChar>; 5], guesses: Vec<Word>) -> AsciiString {
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Default)]
+pub struct RowHint(AsciiString);
+
+impl RowHint {
+    pub fn new(s: AsciiString) -> Self {
+        Self(s)
+    }
+    pub fn letters(&self) -> Vec<AsciiChar> {
+        self.0.clone().into()
+    }
+}
+
+impl FromIterator<AsciiChar> for RowHint {
+    fn from_iter<T: IntoIterator<Item = AsciiChar>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
+
+impl From<&str> for RowHint {
+    fn from(value: &str) -> Self {
+        Self(AsciiString::from_ascii(value).unwrap())
+    }
+}
+
+fn row_hint(row: Word, known_letters: [Option<AsciiChar>; 5], guesses: Vec<Word>) -> RowHint {
     let possible_hints = row
         .0
         .into_iter()
@@ -124,6 +148,7 @@ fn row_hint(row: Word, known_letters: [Option<AsciiChar>; 5], guesses: Vec<Word>
         .flat_map(|word| word.0.iter())
         .unique()
         .filter(|letter| possible_hints.contains(letter))
+        .copied()
         .collect()
 }
 
@@ -132,7 +157,7 @@ pub struct PuzzleViewModel {
     pub guesses: Vec<Word>,
     pub is_finished: bool,
     pub grid: [[Option<AsciiChar>; 5]; 5],
-    pub hints: [AsciiString; 5],
+    pub hints: [RowHint; 5],
     pub alphabet: BTreeMap<AsciiChar, LetterPlayed>,
 }
 
@@ -167,13 +192,7 @@ mod test {
                 [None; 5],
                 [None, None, None, Some(AsciiChar::s), Some(AsciiChar::e)],
             ],
-            hints: [
-                AsciiString::from_ascii("").unwrap(),
-                AsciiString::from_ascii("ro").unwrap(),
-                AsciiString::from_ascii("o").unwrap(),
-                AsciiString::from_ascii("se").unwrap(),
-                AsciiString::from_ascii("re").unwrap(),
-            ],
+            hints: ["".into(), "ro".into(), "o".into(), "se".into(), "re".into()],
             alphabet: {
                 let mut alphabet = BTreeMap::new();
                 alphabet.insert(AsciiChar::a, LetterPlayed::NotInSolution);
@@ -238,13 +257,7 @@ mod test {
                 ],
                 [None, None, None, None, Some(AsciiChar::e)],
             ],
-            hints: [
-                AsciiString::from_ascii("").unwrap(),
-                AsciiString::from_ascii("").unwrap(),
-                AsciiString::from_ascii("").unwrap(),
-                AsciiString::from_ascii("").unwrap(),
-                AsciiString::from_ascii("rets").unwrap(),
-            ],
+            hints: ["".into(), "".into(), "".into(), "".into(), "rets".into()],
             alphabet: {
                 let mut alphabet = BTreeMap::new();
                 // "grime", "honor", "outdo", "steed", "terse"
@@ -325,13 +338,7 @@ mod test {
                     Some(AsciiChar::e),
                 ],
             ],
-            hints: [
-                AsciiString::from_ascii("").unwrap(),
-                AsciiString::from_ascii("").unwrap(),
-                AsciiString::from_ascii("").unwrap(),
-                AsciiString::from_ascii("").unwrap(),
-                AsciiString::from_ascii("").unwrap(),
-            ],
+            hints: ["".into(), "".into(), "".into(), "".into(), "".into()],
             alphabet: {
                 let mut alphabet = BTreeMap::new();
                 // "grime", "honor", "outdo", "steed", "terse"

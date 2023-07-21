@@ -26,7 +26,7 @@ fn main() {
                 .to_vec();
             let mut row = AsciiString::from(row);
             row.push(AsciiChar::VerticalBar);
-            hints.chars().for_each(|ch| row.push(ch));
+            hints.letters().iter().for_each(|ch| row.push(*ch));
             row
         });
         rows.for_each(|row| println!("{row}"));

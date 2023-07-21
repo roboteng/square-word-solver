@@ -1,9 +1,7 @@
-use std::collections::BTreeMap;
-
 use ascii::AsciiString;
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use square_word::{
-    finder::{Puzzle, PuzzleViewModel},
+    first_guess::{distrobution_for, entropy},
     Solution,
 };
 
@@ -21,43 +19,19 @@ fn main() {
             )
         })
         .collect::<Vec<_>>();
-    let n = solutions.len() as f64;
 
     let possible_answers = include_str!("../../words.txt");
     let possible_answers = possible_answers.lines().collect::<Vec<&str>>();
 
-    let scores = possible_answers.par_iter().map(|&word| {
-        let score = {
-            let mut counts: BTreeMap<PuzzleViewModel, usize> = BTreeMap::new();
-            for actual_answer in solutions.iter() {
-                let mut puzzle = Puzzle::new(actual_answer.clone());
-                puzzle.guess(word.into());
-                let view = puzzle.view();
+    let mut scores = possible_answers
+        .par_iter()
+        .map(|&word| {
+            let dist = distrobution_for(&solutions, word.into());
+            let i = entropy(&dist);
+            (word, i)
+        })
+        .collect::<Vec<(&str, f64)>>();
 
-                for possible_answer in solutions.iter() {
-                    let my_view = view.clone();
-                    if possible_answer.does_match(&my_view) {
-                        counts
-                            .entry(view.clone())
-                            .and_modify(|i| {
-                                *i += 1;
-                            })
-                            .or_insert(1);
-                    }
-                }
-            }
-            let score: f64 = counts
-                .values()
-                .map(|count| -(*count as f64 / n).log2() / *count as f64)
-                .sum::<f64>();
-            score
-        };
-        println!("{word} -> {score:4}");
-        (word, score)
-    });
-    // let sorted_scores =
-    //     scores.sorted_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
-    scores.for_each(|(word, score)| {
-        println!("{word}: {score:3}");
-    })
+    scores.sort_by(|&a, b| a.1.partial_cmp(&b.1).unwrap());
+    println!("{scores:?}");
 }
