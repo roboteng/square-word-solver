@@ -1,11 +1,11 @@
-pub fn info(distrobution: &[u32]) -> f64 {
+pub fn entropy(distrobution: &[u32]) -> f64 {
     let size = distrobution.iter().sum::<u32>() as f64;
     distrobution
         .iter()
         .map(|&a| {
             let a = a as f64;
-            let k: f64 = a / size;
-            -k.log2() * k
+            let k: f64 = size / a;
+            k.log2() / k
         })
         .sum()
 }
@@ -17,13 +17,15 @@ mod test {
     #[test]
     fn gives_correct_for_distrobution() {
         fn check(dist: &[u32], expected: f64) {
-            let actual = info(&dist);
+            let actual = entropy(&dist);
 
-            assert_eq!(actual, expected, "For distrobution: {dist:?} expected an information of {expected}, but got {actual}");
+            assert_eq!(
+                actual, expected,
+                "For distrobution: {dist:?} expected an entropy of {expected}, but got {actual}"
+            );
         }
 
         for (distrobution, expected) in [
-            //split
             (vec![1], 0.0),
             (vec![1, 1], 1.0),
             (vec![16], 0.0),
