@@ -3,8 +3,9 @@ pub fn info(distrobution: &[u32]) -> f64 {
     distrobution
         .iter()
         .map(|&a| {
-            let k: f64 = (a as f64 / size);
-            -k.log2() / size
+            let a = a as f64;
+            let k: f64 = a / size;
+            -k.log2() * k
         })
         .sum()
 }
@@ -25,6 +26,12 @@ mod test {
             //split
             (vec![1], 0.0),
             (vec![1, 1], 1.0),
+            (vec![16], 0.0),
+            (vec![8, 8], 1.0),
+            (vec![8, 4, 4], 1.5),
+            (vec![8, 4, 2, 1, 1], 1.875),
+            (vec![4, 4, 4, 4], 2.0),
+            ([20; 256].into(), 8.0),
         ] {
             check(&distrobution, expected)
         }
