@@ -118,6 +118,14 @@ impl RowHint {
     pub fn letters(&self) -> Vec<AsciiChar> {
         self.0.clone().into()
     }
+
+    pub fn is_equivalent_to(&self, other: &Self) -> bool {
+        self.0.len() == other.0.len()
+            && self
+                .letters()
+                .iter()
+                .all(|letter| other.letters().contains(letter))
+    }
 }
 
 impl FromIterator<AsciiChar> for RowHint {
@@ -361,5 +369,38 @@ mod test {
         let actual = puzzle.view();
 
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn equal_row_hints_are_equivalent() {
+        let s = "abc";
+        let a: RowHint = s.into();
+        let b = s.into();
+
+        assert!(a.is_equivalent_to(&b));
+    }
+
+    #[test]
+    fn different_lengthed_row_hints_are_not_equivalent() {
+        let a: RowHint = "abcd".into();
+        let b = "abc".into();
+
+        assert!(!a.is_equivalent_to(&b));
+    }
+
+    #[test]
+    fn row_hints_with_different_contents_are_not_equivalent() {
+        let a: RowHint = "abc".into();
+        let b = "abd".into();
+
+        assert!(!a.is_equivalent_to(&b));
+    }
+
+    #[test]
+    fn shuffled_row_hints_are_equivalent() {
+        let a: RowHint = "abc".into();
+        let b = "bca".into();
+
+        assert!(a.is_equivalent_to(&b));
     }
 }
