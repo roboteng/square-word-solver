@@ -169,6 +169,17 @@ pub struct PuzzleViewModel {
     pub alphabet: BTreeMap<AsciiChar, LetterPlayed>,
 }
 
+impl PuzzleViewModel {
+    pub fn is_equivalent_to(&self, other: &Self) -> bool {
+        self.grid == other.grid
+            && self
+                .hints
+                .iter()
+                .zip(other.hints.iter())
+                .all(|(s, o)| s.is_equivalent_to(o))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

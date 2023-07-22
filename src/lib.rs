@@ -167,6 +167,10 @@ impl Solution {
 
         my_view == *view
     }
+
+    pub fn is_equivalent_to(&self, other: &PuzzleViewModel) -> bool {
+        false
+    }
 }
 
 impl Display for Solution {
