@@ -105,6 +105,7 @@ impl<'a> SolutionBuilder<'a> {
             } else if self.words.len() == 5 {
                 let words = [self.words.iter().map(|s| s.to_string()).collect(), columns].concat();
                 let set: HashSet<&String> = HashSet::from_iter(words.iter());
+
                 if set.len() == 10 {
                     Ok(AddedWord::Finished(Box::new(self.build().unwrap())))
                 } else {

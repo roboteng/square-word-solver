@@ -127,7 +127,7 @@ impl<'a> RangeFinder<'a> for HasSearchRange {
 }
 
 pub fn get_words() -> Result<Vec<String>, io::Error> {
-    let path = Path::new("words.txt");
+    let path = Path::new("all_words.txt");
     let mut file = File::open(path)?;
 
     let mut buffer = String::new();
