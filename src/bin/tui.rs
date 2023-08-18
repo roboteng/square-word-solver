@@ -5,7 +5,7 @@ use std::{
 
 use ascii::{AsciiChar, AsciiString};
 use square_word::{
-    finder::{LetterPlayed, Puzzle, PuzzleViewModel, RowHint},
+    finder::{Puzzle, PuzzleViewModel, RowHint},
     Solution,
 };
 
@@ -18,8 +18,7 @@ fn read_line(stdin: &Stdin) -> Result<String, io::Error> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("First guess:");
     let stdin = io::stdin();
-    let mut buffer = String::new();
-    stdin.read_line(&mut buffer)?;
+    let guess = read_line(&stdin).unwrap();
 
     println!("What's in your grid?");
     println!("Use '.', '_', or ' ' for empty spaces");
@@ -71,7 +70,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect::<Vec<_>>();
 
     let vm = PuzzleViewModel {
-        guesses: vec!["traps".into()],
+        guesses: vec![guess.clone().into()],
         is_finished: false,
         grid,
         hints,
@@ -82,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .iter()
         .filter(|&sol| {
             let mut p = Puzzle::new(sol.clone());
-            p.guess("tarps".into());
+            p.guess(guess.clone().into());
             let other = p.view();
             other.is_equivalent_to(&vm)
         })
