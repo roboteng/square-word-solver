@@ -126,6 +126,32 @@ impl<'a> RangeFinder<'a> for HasSearchRange {
     }
 }
 
+pub struct LinearSearchRange<'a>(&'a [Word]);
+
+impl<'a> RangeFinder<'a> for LinearSearchRange<'a> {
+    fn init(words: &'a [Word]) -> Self {
+        Self(words)
+    }
+
+    fn range(&self, new_word: &[AsciiChar]) -> std::ops::Range<usize> {
+        let start = self
+            .0
+            .into_iter()
+            .position(|a| &a.0[0..new_word.len()] == new_word);
+        let Some(start) = start else {
+            return 0..0;
+        };
+        let remaining = &self.0[start..];
+        let end = remaining
+            .into_iter()
+            .position(|a| &a.0[0..new_word.len()] != new_word);
+        let Some(end) = end else {
+            return start..start;
+        };
+        start..(start + end)
+    }
+}
+
 pub fn get_words() -> Result<Vec<String>, io::Error> {
     let path = Path::new("all_words.txt");
     let mut file = File::open(path)?;
@@ -259,6 +285,7 @@ mod my_test {
         top_down_finder::{find_subsolutions, TopDownFinder},
         trivial_finder::TrivialFinder,
     };
+    use ascii::AsAsciiStr;
     use pretty_assertions::assert_eq;
 
     use super::*;
@@ -531,6 +558,27 @@ mod my_test {
                 )
             }
         }
+    }
+
+    fn range_simple<'a, T: RangeFinder<'a>>(words: &'a [Word]) {
+        let finder = T::init(words);
+
+        let input = &[AsciiChar::b];
+        let actual = finder.range(input);
+        let expected = 2..4;
+        assert_eq!(actual, expected);
+    }
+
+    fn simple_input() -> Vec<Word> {
+        let source = vec!["aa   ", "ab   ", "ba   ", "bb   ", "ca   ", "cb   "];
+        let source = source.iter().map(|&a| a.into()).collect::<Vec<_>>();
+        source
+    }
+
+    #[test]
+    fn range_simple_linear() {
+        let source = simple_input();
+        range_simple::<LinearSearchRange>(&source);
     }
 
     mod proptesting;
