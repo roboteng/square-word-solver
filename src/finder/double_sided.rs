@@ -2,21 +2,65 @@ use std::iter::Peekable;
 
 use ascii::{AsAsciiStr, AsciiChar, AsciiStr};
 use itertools::Itertools;
-#[allow(unused_imports)]
+
+#[cfg(feature = "multi-thread")]
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use crate::{RangeFinder, Solution, SolutionFinder, Word};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DoubleSidedFinderMT<R: for<'a> RangeFinder<'a> + Send + Sync> {
+pub struct DoubleSidedFinder<R: for<'a> RangeFinder<'a> + Send + Sync> {
     words: Vec<Word>,
     range_finder: R,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DoubleSidedFinderST<R: for<'a> RangeFinder<'a> + Send + Sync> {
-    words: Vec<Word>,
-    range_finder: R,
+impl<R: for<'b> RangeFinder<'b> + Send + Sync> DoubleSidedFinder<R> {
+    fn find_solutions(&self) -> Vec<Solution> {
+        let words = self.words.iter().enumerate();
+        #[cfg(feature = "multi-thread")]
+        {
+            words
+                .collect::<Vec<_>>()
+                .par_iter()
+                .flat_map(|(i, _)| {
+                    let mut inner = Inner::new(*i, &self.words, &self.range_finder);
+                    inner.fill_first_column().into_par_iter()
+                })
+                .collect()
+        }
+
+        #[cfg(not(feature = "multi-thread"))]
+        {
+            words
+                .flat_map(|(i, _)| {
+                    let mut inner = Inner::new(i, &self.words, &self.range_finder);
+                    inner.fill_first_column().into_iter()
+                })
+                .collect::<Vec<_>>()
+        }
+    }
+}
+
+impl<'a, R: for<'b> RangeFinder<'b> + Send + Sync> SolutionFinder<'a> for DoubleSidedFinder<R> {
+    fn new(words: &'a [&'a str]) -> Self {
+        let mut words = words
+            .iter()
+            .filter_map(|w| AsciiStr::from_ascii(w).ok())
+            .filter_map(|w| {
+                let k = w.chars().collect::<Vec<_>>();
+                k.try_into().ok()
+            })
+            .collect_vec();
+        words.sort();
+        Self {
+            range_finder: R::init(&words),
+            words,
+        }
+    }
+
+    fn find(&self) -> Vec<Solution> {
+        self.find_solutions()
+    }
 }
 
 struct Inner<'a, R: RangeFinder<'a>> {
@@ -244,78 +288,6 @@ impl<'a, R: RangeFinder<'a>> Inner<'a, R> {
     }
 }
 
-impl<R: for<'b> RangeFinder<'b> + Send + Sync> DoubleSidedFinderMT<R> {
-    fn find_solutions(&self) -> Vec<Solution> {
-        self.words
-            .iter()
-            .enumerate()
-            .collect::<Vec<_>>()
-            .par_iter()
-            .flat_map(|(i, _)| {
-                let mut inner = Inner::new(*i, &self.words, &self.range_finder);
-                inner.fill_first_column().into_par_iter()
-            })
-            .collect()
-    }
-}
-
-impl<'a, R: for<'b> RangeFinder<'b> + Send + Sync> SolutionFinder<'a> for DoubleSidedFinderMT<R> {
-    fn new(words: &'a [&'a str]) -> Self {
-        let mut words = words
-            .iter()
-            .filter_map(|w| AsciiStr::from_ascii(w).ok())
-            .filter_map(|w| {
-                let k = w.chars().collect::<Vec<_>>();
-                k.try_into().ok()
-            })
-            .collect_vec();
-        words.sort();
-        Self {
-            range_finder: R::init(&words),
-            words,
-        }
-    }
-
-    fn find(&self) -> Vec<Solution> {
-        self.find_solutions()
-    }
-}
-
-impl<R: for<'b> RangeFinder<'b> + Send + Sync> DoubleSidedFinderST<R> {
-    fn find_solutions(&self) -> Vec<Solution> {
-        self.words
-            .iter()
-            .enumerate()
-            .flat_map(|(i, _)| {
-                let mut inner = Inner::new(i, &self.words, &self.range_finder);
-                inner.fill_first_column().into_iter()
-            })
-            .collect::<Vec<_>>()
-    }
-}
-
-impl<'a, R: for<'b> RangeFinder<'b> + Send + Sync> SolutionFinder<'a> for DoubleSidedFinderST<R> {
-    fn new(words: &'a [&'a str]) -> Self {
-        let mut words = words
-            .iter()
-            .filter_map(|w| AsciiStr::from_ascii(w).ok())
-            .filter_map(|w| {
-                let k = w.chars().collect::<Vec<_>>();
-                k.try_into().ok()
-            })
-            .collect_vec();
-        words.sort();
-        Self {
-            range_finder: R::init(&words),
-            words,
-        }
-    }
-
-    fn find(&self) -> Vec<Solution> {
-        self.find_solutions()
-    }
-}
-
 struct ExceptFor<I, const N: usize>
 where
     I: Iterator<Item = usize>,
@@ -368,17 +340,41 @@ impl<I: Iterator<Item = usize>, const N: usize> ExceptForExt<N> for I {}
 
 #[cfg(test)]
 mod test {
-    use crate::BinSearchRange;
+    use crate::{BinSearchRange, SolutionFinder};
 
     use super::*;
 
     #[test]
-    fn words() {
+    fn words_unified() {
+        let words = vec![
+            "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
+            "erode",
+        ];
+        let f = DoubleSidedFinder::<BinSearchRange>::new(&words);
+        let sols = f.find();
+        println!("{sols:?}");
+        assert_eq!(sols.len(), 2);
+    }
+
+    #[test]
+    fn words_backwards_compatibility_mt() {
         let words = vec![
             "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
             "erode",
         ];
         let f = DoubleSidedFinderMT::<BinSearchRange>::new(&words);
+        let sols = f.find();
+        println!("{sols:?}");
+        assert_eq!(sols.len(), 2);
+    }
+
+    #[test]
+    fn words_backwards_compatibility_st() {
+        let words = vec![
+            "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
+            "erode",
+        ];
+        let f = DoubleSidedFinderST::<BinSearchRange>::new(&words);
         let sols = f.find();
         println!("{sols:?}");
         assert_eq!(sols.len(), 2);
