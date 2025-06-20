@@ -11,12 +11,9 @@ use std::str::FromStr;
 use std::{collections::HashMap, fmt::Display, fs::File, io::Read, path::Path};
 
 mod builder;
-pub mod double_sided;
 pub mod finder;
 pub mod first_guess;
 pub mod solver;
-pub mod top_down_finder;
-pub mod trivial_finder;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Word([AsciiChar; 5]);
@@ -280,10 +277,7 @@ impl WordList {
 mod my_test {
     use crate::{
         builder::SolutionBuilder,
-        double_sided::DoubleSidedFinderMT,
-        finder::Puzzle,
-        top_down_finder::{find_subsolutions, TopDownFinder},
-        trivial_finder::TrivialFinder,
+        finder::{DoubleSidedFinderMT, Puzzle, find_subsolutions, TopDownFinder, TrivialFinder},
     };
     use ascii::AsAsciiStr;
     use pretty_assertions::assert_eq;

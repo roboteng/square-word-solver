@@ -1,5 +1,5 @@
 use crate::{
-    double_sided::DoubleSidedFinderMT, top_down_finder::TopDownFinder, BinSearchRange,
+    finder::{DoubleSidedFinderMT, TopDownFinder}, BinSearchRange,
     SolutionFinder,
 };
 

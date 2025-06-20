@@ -1,6 +1,6 @@
 use std::env::args;
 
-use square_word::{double_sided::*, *};
+use square_word::{finder::*, *};
 
 fn main() {
     let valid_words = get_words().unwrap();
