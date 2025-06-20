@@ -111,7 +111,7 @@ impl<'a> RangeFinder<'a> for HasSearchRange {
             for word in words.iter() {
                 let start = AsciiString::from(&word.0[0..end]);
                 let start = start;
-                let range = range_for_ascii(&words, start.as_slice());
+                let range = range_for_ascii(words, start.as_slice());
                 map.insert(start, range);
             }
         }
@@ -136,14 +136,14 @@ impl<'a> RangeFinder<'a> for LinearSearchRange<'a> {
     fn range(&self, new_word: &[AsciiChar]) -> std::ops::Range<usize> {
         let start = self
             .0
-            .into_iter()
+            .iter()
             .position(|a| &a.0[0..new_word.len()] == new_word);
         let Some(start) = start else {
             return 0..0;
         };
         let remaining = &self.0[start..];
         let end = remaining
-            .into_iter()
+            .iter()
             .position(|a| &a.0[0..new_word.len()] != new_word);
         let Some(end) = end else {
             return start..start;
@@ -194,8 +194,8 @@ impl Solution {
         my_view == *view
     }
 
-    pub fn is_equivalent_to(&self, other: &PuzzleViewModel) -> bool {
-        false
+    pub fn is_equivalent_to(&self, _other: &PuzzleViewModel) -> bool {
+        todo!()
     }
 }
 
@@ -579,6 +579,38 @@ mod my_test {
     fn range_simple_linear() {
         let source = simple_input();
         range_simple::<LinearSearchRange>(&source);
+    }
+
+    #[test]
+    fn range_simple_binary() {
+        let source = simple_input();
+        range_simple::<BinSearchRange>(&source);
+    }
+
+    const WORDS: &'static str = include_str!("../all_words.txt");
+
+    #[bench]
+    fn bench_linear_search(b: &mut Bencher) {
+        let words: Vec<Word> = WORDS.lines().map(|w| w.into()).collect();
+        let fnder = LinearSearchRange::init(&words);
+
+        b.iter(|| {
+            for word in words.iter() {
+                fnder.range(&word.0[0..3]);
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_binary_search(b: &mut Bencher) {
+        let words: Vec<Word> = WORDS.lines().map(|w| w.into()).collect();
+        let fnder = BinSearchRange::init(&words);
+
+        b.iter(|| {
+            for word in words.iter() {
+                fnder.range(&word.0[0..3]);
+            }
+        });
     }
 
     mod proptesting;

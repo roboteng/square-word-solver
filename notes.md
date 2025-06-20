@@ -2,7 +2,7 @@
 
 ## Interesting case
 
-These three solutons might be a good test case for a full solver.
+These three solutions might be a good test case for a full solver.
 
 - brief,liner,ovary,genie,steer
 - cried,liner,ovary,genie,steer

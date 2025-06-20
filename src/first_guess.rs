@@ -28,7 +28,7 @@ pub fn distrobution_for(sols: &[Solution], word: Word) -> Vec<u32> {
         c.entry(j).and_modify(|a| *a += 1).or_insert(1);
         c
     });
-    Vec::from_iter(counts.values().into_iter().copied())
+    Vec::from_iter(counts.values().copied())
 }
 
 #[cfg(test)]

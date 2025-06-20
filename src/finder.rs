@@ -90,7 +90,7 @@ impl Puzzle {
                 .flat_map(|word| word.0.iter().copied())
                 .map(|letter| {
                     let is_letter_in_solution = if letters_in_solution.contains(&letter) {
-                        if letters_in_hints.contains(&&letter) {
+                        if letters_in_hints.contains(&letter) {
                             LetterPlayed::PartiallyUsed
                         } else {
                             LetterPlayed::AllUsed

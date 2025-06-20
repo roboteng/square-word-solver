@@ -244,7 +244,7 @@ impl<'a, R: RangeFinder<'a>> Inner<'a, R> {
     }
 }
 
-impl<'a, R: for<'b> RangeFinder<'b> + Send + Sync> DoubleSidedFinderMT<R> {
+impl<R: for<'b> RangeFinder<'b> + Send + Sync> DoubleSidedFinderMT<R> {
     fn find_solutions(&self) -> Vec<Solution> {
         self.words
             .iter()
@@ -255,7 +255,7 @@ impl<'a, R: for<'b> RangeFinder<'b> + Send + Sync> DoubleSidedFinderMT<R> {
                 let mut inner = Inner::new(*i, &self.words, &self.range_finder);
                 inner.fill_first_column().into_par_iter()
             })
-            .collect::<Vec<_>>()
+            .collect()
     }
 }
 
@@ -281,7 +281,7 @@ impl<'a, R: for<'b> RangeFinder<'b> + Send + Sync> SolutionFinder<'a> for Double
     }
 }
 
-impl<'a, R: for<'b> RangeFinder<'b> + Send + Sync> DoubleSidedFinderST<R> {
+impl<R: for<'b> RangeFinder<'b> + Send + Sync> DoubleSidedFinderST<R> {
     fn find_solutions(&self) -> Vec<Solution> {
         self.words
             .iter()
@@ -331,7 +331,7 @@ where
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        'outer: while let Some(next) = self.underlying.next() {
+        'outer: for next in self.underlying.by_ref() {
             while let Some(next_skip) = self.skip_values.peek() {
                 match next_skip.cmp(&next) {
                     std::cmp::Ordering::Less => {
