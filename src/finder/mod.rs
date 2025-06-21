@@ -76,9 +76,13 @@ impl Puzzle {
 
     fn hints(&self, grid: &[[Option<AsciiChar>; 5]; 5]) -> [RowHint; 5] {
         [0, 1, 2, 3, 4]
+            .iter()
             .zip(self.solution.rows.clone())
             // is there a better way to do something like array.enumerate here?
-            .map(|(i, word)| row_hint(word, grid[i], self.guesses.clone()))
+            .map(|(i, word)| row_hint(word, grid[*i], self.guesses.clone()))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap()
     }
 
     fn alphabet(&self, hints: &[RowHint]) -> BTreeMap<AsciiChar, LetterPlayed> {

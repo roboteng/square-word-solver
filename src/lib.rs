@@ -1,6 +1,5 @@
 #![feature(test)]
 #![feature(iter_intersperse)]
-#![feature(array_zip)]
 extern crate num_cpus;
 use ascii::{AsciiChar, AsciiStr, AsciiString};
 use builder::AddedWord;

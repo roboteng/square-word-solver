@@ -126,4 +126,12 @@ mod tests {
 
         assert_eq!(slice, expected);
     }
+
+    #[test]
+    fn fnd_solutions() {
+        let words = convert(&[
+            "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
+            "erode",
+        ]);
+    }
 }
