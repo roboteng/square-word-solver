@@ -277,7 +277,7 @@ impl WordList {
 mod my_test {
     use crate::{
         builder::SolutionBuilder,
-        finder::{DoubleSidedFinderMT, Puzzle, find_subsolutions, TopDownFinder, TrivialFinder},
+        finder::{find_subsolutions, DoubleSidedFinder, Puzzle, TopDownFinder, TrivialFinder},
     };
     use ascii::AsAsciiStr;
     use pretty_assertions::assert_eq;
@@ -482,7 +482,7 @@ mod my_test {
             k.find()
         };
         let double = {
-            let k = DoubleSidedFinderMT::<BinSearchRange>::new(&words);
+            let k = DoubleSidedFinder::<BinSearchRange>::new(&words);
             k.find()
         };
         assert_eq!(first, double);
@@ -496,7 +496,7 @@ mod my_test {
         ];
 
         let double = {
-            let k = DoubleSidedFinderMT::<BinSearchRange>::new(&words);
+            let k = DoubleSidedFinder::<BinSearchRange>::new(&words);
             let mut sol = k.find();
             sol.sort();
             sol

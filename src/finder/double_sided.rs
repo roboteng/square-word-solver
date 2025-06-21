@@ -362,7 +362,7 @@ mod test {
             "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
             "erode",
         ];
-        let f = DoubleSidedFinderMT::<BinSearchRange>::new(&words);
+        let f = DoubleSidedFinder::<BinSearchRange>::new(&words);
         let sols = f.find();
         println!("{sols:?}");
         assert_eq!(sols.len(), 2);
@@ -374,7 +374,7 @@ mod test {
             "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
             "erode",
         ];
-        let f = DoubleSidedFinderST::<BinSearchRange>::new(&words);
+        let f = DoubleSidedFinder::<BinSearchRange>::new(&words);
         let sols = f.find();
         println!("{sols:?}");
         assert_eq!(sols.len(), 2);

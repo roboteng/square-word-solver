@@ -6,13 +6,15 @@ use itertools::Itertools;
 
 use crate::{Solution, Word};
 
+pub mod double_sided;
+pub mod new_double_sided;
 pub mod top_down_finder;
 pub mod trivial_finder;
-pub mod double_sided;
 
+pub use double_sided::*;
+pub use new_double_sided::*;
 pub use top_down_finder::*;
 pub use trivial_finder::*;
-pub use double_sided::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum LetterPlayed {
