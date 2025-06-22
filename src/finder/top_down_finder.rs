@@ -1,7 +1,7 @@
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use crate::AddedWord;
-use crate::{builder::SolutionBuilder, Solution, SolutionFinder, WordList};
+use crate::{Solution, SolutionFinder, WordList, builder::SolutionBuilder};
 
 pub struct TopDownFinder<'a> {
     word_list: WordList,
@@ -25,7 +25,7 @@ pub fn find_solutions_new<'a>(
     possible_columns: &WordList,
     possible_rows: &'a Vec<&'a str>,
 ) -> Vec<Solution> {
-    let k = possible_rows
+    possible_rows
         .par_iter()
         .filter_map(|word| {
             let mut builder = SolutionBuilder::new(possible_columns);
@@ -34,9 +34,7 @@ pub fn find_solutions_new<'a>(
             Some(sols.into_par_iter())
         })
         .flatten()
-        .collect();
-
-    k
+        .collect()
 }
 
 pub fn find_subsolutions<'a>(

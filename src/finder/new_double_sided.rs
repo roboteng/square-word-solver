@@ -197,7 +197,7 @@ mod tests {
             for row in sol {
                 println!("{row}");
             }
-            println!("");
+            println!();
         }
         assert_eq!(sols.len(), 2);
     }

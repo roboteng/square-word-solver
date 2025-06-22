@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    finder::{Puzzle, PuzzleViewModel},
     Solution, Word,
+    finder::{Puzzle, PuzzleViewModel},
 };
 
 pub fn entropy(distrobution: &[u32]) -> f64 {
@@ -40,7 +40,7 @@ mod test {
     #[test]
     fn gives_correct_for_distrobution() {
         fn check(dist: &[u32], expected: f64) {
-            let actual = entropy(&dist);
+            let actual = entropy(dist);
 
             assert_eq!(
                 actual, expected,

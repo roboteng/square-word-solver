@@ -106,7 +106,6 @@ impl<'a> RangeFinder<'a> for HasSearchRange {
         for end in 1..5 {
             for word in words.iter() {
                 let start = AsciiString::from(&word.0[0..end]);
-                let start = start;
                 let range = range_for_ascii(words, start.as_slice());
                 map.insert(start, range);
             }
@@ -276,9 +275,8 @@ impl WordList {
 mod my_test {
     use crate::{
         builder::SolutionBuilder,
-        finder::{find_subsolutions, DoubleSidedFinder, Puzzle, TopDownFinder, TrivialFinder},
+        finder::{DoubleSidedFinder, Puzzle, TopDownFinder, TrivialFinder, find_subsolutions},
     };
-    use ascii::AsAsciiStr;
     use pretty_assertions::assert_eq;
 
     use super::*;
@@ -563,9 +561,8 @@ mod my_test {
     }
 
     fn simple_input() -> Vec<Word> {
-        let source = vec!["aa   ", "ab   ", "ba   ", "bb   ", "ca   ", "cb   "];
-        let source = source.iter().map(|&a| a.into()).collect::<Vec<_>>();
-        source
+        let source = ["aa   ", "ab   ", "ba   ", "bb   ", "ca   ", "cb   "];
+        source.iter().map(|&a| a.into()).collect()
     }
 
     #[test]
@@ -580,7 +577,7 @@ mod my_test {
         range_simple::<BinSearchRange>(&source);
     }
 
-    const WORDS: &'static str = include_str!("../all_words.txt");
+    const WORDS: &str = include_str!("../all_words.txt");
 
     #[bench]
     fn bench_linear_search(b: &mut Bencher) {

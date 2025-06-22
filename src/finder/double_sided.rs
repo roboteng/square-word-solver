@@ -46,10 +46,7 @@ impl<'a, R: for<'b> RangeFinder<'b> + Send + Sync> SolutionFinder<'a> for Double
         let mut words = words
             .iter()
             .filter_map(|w| AsciiStr::from_ascii(w).ok())
-            .filter_map(|w| {
-                let k = w.chars().collect::<Vec<_>>();
-                k.try_into().ok()
-            })
+            .map(|w| w.chars().collect::<Vec<_>>().into())
             .collect_vec();
         words.sort();
         Self {
