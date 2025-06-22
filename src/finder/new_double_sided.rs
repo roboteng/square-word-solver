@@ -1,15 +1,25 @@
-use std::collections::HashSet;
+use std::{
+    collections::{HashMap, HashSet},
+    hash::RandomState,
+};
 
 use itertools::Itertools;
 
-use crate::Solution;
+pub fn solutions<'a>(words: &[&'a str]) -> Vec<[&'a str; 5]> {
+    let word_bytes = convert(words);
 
-pub fn solutions(words: &[&str]) -> Vec<[[u8; 5]; 5]> {
-    let words = convert(words);
+    let starting_cache = starting_letters_cache(&word_bytes);
 
-    let starting_cache = starting_letters_cache(&words);
+    let sols = find_solutions(starting_cache, &word_bytes);
+    convert_sols(words, sols)
+}
 
-    find_solutions(starting_cache, &words)
+fn convert_sols<'a>(words: &[&'a str], sols: Vec<[[u8; 5]; 5]>) -> Vec<[&'a str; 5]> {
+    let pairs: HashMap<&[u8], &&str, RandomState> =
+        HashMap::from_iter(words.iter().map(|w| (w.as_bytes(), w)));
+    sols.iter()
+        .map(|sol| sol.map(|a| *pairs[a.as_slice()]))
+        .collect()
 }
 
 fn convert(words: &[&str]) -> Vec<[u8; 5]> {
@@ -22,7 +32,7 @@ fn convert(words: &[&str]) -> Vec<[u8; 5]> {
 fn starting_letters_cache(words: &[[u8; 5]]) -> HashSet<&[u8]> {
     let mut cache = HashSet::new();
     for word in words {
-        for i in 1..6 {
+        for i in 1..=5 {
             let w = &word[0..i];
             cache.insert(w);
         }
@@ -34,11 +44,58 @@ fn find_solutions(cache: HashSet<&[u8]>, words: &[[u8; 5]]) -> Vec<[[u8; 5]; 5]>
     let mut solution = [[0; 5]; 5];
     let mut solutions = Vec::new();
 
-    for word in words {
-        solution[0] = *word;
+    for word1 in words {
+        solution[0] = *word1;
+        for word2 in words {
+            solution[1] = *word2;
+            for word3 in words {
+                solution[2] = *word3;
+                if !are_cols_valid(&cache, &solution) {
+                    continue;
+                }
+                for word4 in words {
+                    solution[3] = *word4;
+                    if !are_cols_valid(&cache, &solution) {
+                        continue;
+                    }
+                    for word5 in words {
+                        solution[4] = *word5;
+                        if !are_cols_valid(&cache, &solution) {
+                            continue;
+                        }
+                        let mut valid = true;
+                        for x in 0..5 {
+                            let col = row_index(&solution, x);
+                            let col = to_slice(&col);
+                            if !cache.contains(col) {
+                                valid = false;
+                            }
+                        }
+                        if valid {
+                            solutions.push(solution);
+                        }
+                    }
+                    solution[4] = [0; 5];
+                }
+                solution[3] = [0; 5];
+            }
+            solution[2] = [0; 5];
+        }
+        solution[1] = [0; 5];
     }
 
     solutions
+}
+
+fn are_cols_valid(cache: &HashSet<&[u8]>, solution: &[[u8; 5]; 5]) -> bool {
+    for i in 0..5 {
+        let col = row_index(solution, i);
+        let col = to_slice(&col);
+        if !cache.contains(col) {
+            return false;
+        }
+    }
+    true
 }
 
 fn row_index(solution: &[[u8; 5]; 5], index: usize) -> [u8; 5] {
@@ -62,6 +119,8 @@ fn to_slice(word: &[u8; 5]) -> &[u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    extern crate test;
+    use test::Bencher;
 
     #[test]
     fn cache_hit_exact() {
@@ -129,9 +188,30 @@ mod tests {
 
     #[test]
     fn fnd_solutions() {
-        let words = convert(&[
+        let words = vec![
             "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
             "erode",
-        ]);
+        ];
+        let sols = solutions(&words);
+        for sol in sols.iter() {
+            for row in sol {
+                println!("{row}");
+            }
+            println!("");
+        }
+        assert_eq!(sols.len(), 2);
+    }
+
+    #[bench]
+    #[ignore = "bench"]
+    fn time_original(b: &mut Bencher) {
+        let words = include_str!("../../words.txt")
+            .lines()
+            .take(20)
+            .collect::<Vec<_>>();
+
+        b.iter(|| {
+            solutions(&words);
+        });
     }
 }
