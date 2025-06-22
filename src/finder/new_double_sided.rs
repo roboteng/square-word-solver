@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    hash::RandomState,
-};
+use std::{collections::HashMap, hash::RandomState};
 
 use itertools::Itertools;
 
@@ -29,18 +26,21 @@ fn convert(words: &[&str]) -> Vec<[u8; 5]> {
         .collect::<Vec<[u8; 5]>>()
 }
 
-fn starting_letters_cache(words: &[[u8; 5]]) -> HashSet<&[u8]> {
-    let mut cache = HashSet::new();
+fn starting_letters_cache(words: &[[u8; 5]]) -> HashMap<&[u8], Vec<[u8; 5]>> {
+    let mut cache = HashMap::<&[u8], Vec<[u8; 5]>>::new();
     for word in words {
         for i in 1..=5 {
             let w = &word[0..i];
-            cache.insert(w);
+            cache
+                .entry(w)
+                .and_modify(|e: &mut Vec<[u8; 5]>| e.push(*word))
+                .or_insert(vec![*word]);
         }
     }
     cache
 }
 
-fn find_solutions(cache: HashSet<&[u8]>, words: &[[u8; 5]]) -> Vec<[[u8; 5]; 5]> {
+fn find_solutions(cache: HashMap<&[u8], Vec<[u8; 5]>>, words: &[[u8; 5]]) -> Vec<[[u8; 5]; 5]> {
     let mut solution = [[0; 5]; 5];
     let mut solutions = Vec::new();
 
@@ -67,7 +67,7 @@ fn find_solutions(cache: HashSet<&[u8]>, words: &[[u8; 5]]) -> Vec<[[u8; 5]; 5]>
                         for x in 0..5 {
                             let col = row_index(&solution, x);
                             let col = to_slice(&col);
-                            if !cache.contains(col) {
+                            if !cache.contains_key(col) {
                                 valid = false;
                             }
                         }
@@ -87,11 +87,11 @@ fn find_solutions(cache: HashSet<&[u8]>, words: &[[u8; 5]]) -> Vec<[[u8; 5]; 5]>
     solutions
 }
 
-fn are_cols_valid(cache: &HashSet<&[u8]>, solution: &[[u8; 5]; 5]) -> bool {
+fn are_cols_valid(cache: &HashMap<&[u8], Vec<[u8; 5]>>, solution: &[[u8; 5]; 5]) -> bool {
     for i in 0..5 {
         let col = row_index(solution, i);
         let col = to_slice(&col);
-        if !cache.contains(col) {
+        if !cache.contains_key(col) {
             return false;
         }
     }
@@ -127,7 +127,7 @@ mod tests {
         let words = vec![*b"words"];
         let cache = starting_letters_cache(&words);
         assert!(
-            cache.contains(b"words".as_slice()),
+            cache.contains_key(b"words".as_slice()),
             "Couldn't find {} in {:?}",
             "words",
             cache,
@@ -139,7 +139,7 @@ mod tests {
         let words = vec![*b"words"];
         let cache = starting_letters_cache(&words);
         assert!(
-            cache.contains(b"wo".as_slice()),
+            cache.contains_key(b"wo".as_slice()),
             "Couldn't find {} in {:?}",
             "wo",
             cache,
@@ -151,7 +151,7 @@ mod tests {
         let words = vec![*b"words"];
         let cache = starting_letters_cache(&words);
         assert!(
-            !cache.contains(b"asdf".as_slice()),
+            !cache.contains_key(b"asdf".as_slice()),
             "Founnd {} in {:?}",
             "asdf",
             cache,
