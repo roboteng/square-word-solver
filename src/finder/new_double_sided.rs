@@ -145,7 +145,7 @@ fn find_solutions(cache: HashMap<&[u8], Vec<Word>>) -> Vec<Grid> {
     let mut placed_words = HashSet::new();
     let mut solution = Grid::default();
 
-    place_pair_of_words(&cache, &mut placed_words, &mut solution, 0).unwrap_or_default()
+    place_pair_of_words(&cache, &mut placed_words, &mut solution, 0)
 }
 
 fn place_pair_of_words(
@@ -153,7 +153,7 @@ fn place_pair_of_words(
     placed_words: &mut HashSet<Word>,
     solution: &mut Grid,
     index: usize,
-) -> Option<Vec<Grid>> {
+) -> Vec<Grid> {
     assert!(index < 5);
     for x in index..5 {
         for y in index..5 {
@@ -167,7 +167,10 @@ fn place_pair_of_words(
 
     println!("Starting with:\n{solution}\n-----");
     let current_row = to_slice(&solution[index]);
-    let words = cache.get(current_row)?;
+    let words = match cache.get(current_row) {
+        Some(w) => w,
+        None => return Vec::new(),
+    };
 
     for word in words {
         if placed_words.contains(word) {
@@ -198,9 +201,8 @@ fn place_pair_of_words(
                 solution[i][index] = letter;
             }
             println!("Placed {w} at col {index}:\n{solution}\n-----");
-            if let Some(mut v) = place_pair_of_words(cache, placed_words, solution, index + 1) {
-                solutions.append(&mut v)
-            }
+            let mut v = place_pair_of_words(cache, placed_words, solution, index + 1);
+            solutions.append(&mut v);
             let delete_positions: &[(usize, usize)] = match index {
                 0 => [(0, 1), (0, 2), (0, 3), (0, 4)].as_slice(),
                 1 => &[(1, 2), (1, 3), (1, 4)],
@@ -216,25 +218,27 @@ fn place_pair_of_words(
         solution[index] = [0; 5];
         placed_words.remove(word);
     }
-
-    if solution.is_empty() {
-        None
-    } else {
-        Some(solutions)
-    }
+    solutions
 }
 
 fn place_last_letter(
     cache: &HashMap<&[u8], Vec<Word>>,
     placed_words: &mut HashSet<Word>,
     solution: &mut Grid,
-) -> Option<Vec<Grid>> {
+) -> Vec<Grid> {
     let row = to_slice(&solution[4]);
     let col_word = col_index(solution, 4);
     let col = to_slice(&col_word);
-    let row_words: HashSet<u8, RandomState> =
-        HashSet::from_iter(cache.get(row)?.iter().map(|w| w[4]));
-    let col_words = HashSet::from_iter(cache.get(col)?.iter().map(|w| w[4]));
+    let v = match cache.get(row) {
+        Some(v) => v,
+        None => return Vec::new(),
+    };
+    let row_words: HashSet<u8, RandomState> = HashSet::from_iter(v.iter().map(|w| w[4]));
+    let k = match cache.get(col) {
+        Some(k) => k,
+        None => return Vec::new(),
+    };
+    let col_words = HashSet::from_iter(k.iter().map(|w| w[4]));
     let letters = row_words.intersection(&col_words);
     println!("Found letters {:?}", letters.clone().collect_vec());
     let mut solutions = Vec::new();
@@ -244,7 +248,7 @@ fn place_last_letter(
     }
     solution[4][4] = 0;
 
-    Some(solutions)
+    solutions
 }
 
 fn are_cols_valid(cache: &HashMap<&[u8], Vec<Word>>, solution: &Grid) -> bool {
