@@ -16,7 +16,36 @@ struct Grid([[u8; 5]; 5]);
 
 impl Grid {
     fn place_row(&mut self, row: Word, index: usize) {
+        for x in 0..index {
+            assert!(
+                self[index][x] == row[x],
+                "Tried placing {row} in \n{self}at row {index}"
+            );
+        }
         self[index] = *row;
+    }
+
+    fn place_col(&mut self, col: Word, index: usize) {
+        for y in 0..index {
+            assert!(
+                self[y][index] == col[y],
+                "Tried placing {col} in \n{self}at col {index}"
+            );
+        }
+        for y in index..5 {
+            self[y][index] = col[y];
+        }
+    }
+
+    fn remove_row(&mut self, index: usize) {
+        for x in index..5 {
+            self[index][x] = 0;
+        }
+    }
+    fn remove_col(&mut self, index: usize) {
+        for y in (index + 1)..5 {
+            self[y][index] = 0;
+        }
     }
 }
 
@@ -157,13 +186,19 @@ fn place_pair_of_words(
     assert!(index < 5);
     for x in index..5 {
         for y in index..5 {
-            assert!(solution[y][x] == 0);
+            assert!(solution[y][x] == 0, "{solution}was not empty at {y},{x}");
         }
     }
     for x in 0..index {
         for y in 0..5 {
-            assert!(solution[y][x] != 0);
-            assert!(solution[x][y] != 0);
+            assert!(
+                solution[y][x] != 0,
+                "{solution}should have been empty at {x},{y}"
+            );
+            assert!(
+                solution[x][y] != 0,
+                "{solution}should have been empty at {y},{x}"
+            );
         }
     }
 
@@ -172,7 +207,7 @@ fn place_pair_of_words(
         return place_last_letter(cache, placed_words, solution);
     }
 
-    println!("Starting with:\n{solution}\n-----");
+    println!("Starting at {index} with:\n{solution}\n-----");
     let current_row = to_slice(&solution[index]);
     let words = match cache.get(current_row) {
         Some(w) => w,
@@ -192,10 +227,6 @@ fn place_pair_of_words(
         let possible_columns = match cache.get(to_slice(&col)) {
             Some(columns) => columns,
             None => {
-                for x in index..5 {
-                    solution[index][x] = 0;
-                }
-                placed_words.remove(word);
                 continue;
             }
         };
@@ -206,25 +237,16 @@ fn place_pair_of_words(
                 continue;
             }
             placed_words.insert(*w);
-            for (i, &letter) in w.iter().enumerate() {
-                solution[i][index] = letter;
-            }
+            solution.place_col(*w, index);
+
             println!("Placed {w} at col {index}:\n{solution}\n-----");
             let mut v = place_pair_of_words(cache, placed_words, solution, index + 1);
             solutions.append(&mut v);
-            let delete_positions: &[(usize, usize)] = match index {
-                0 => [(0, 1), (0, 2), (0, 3), (0, 4)].as_slice(),
-                1 => &[(1, 2), (1, 3), (1, 4)],
-                2 => &[(2, 3), (2, 4)],
-                3 => &[(3, 4)],
-                _ => unreachable!("Index was higher than expected"),
-            };
-            for (x, y) in delete_positions {
-                solution[*y][*x] = 0;
-            }
+
+            solution.remove_col(index);
             placed_words.remove(w);
         }
-        solution[index] = [0; 5];
+        solution.remove_row(index);
         placed_words.remove(word);
     }
     solutions
