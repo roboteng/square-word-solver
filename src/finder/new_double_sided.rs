@@ -42,10 +42,23 @@ impl Grid {
             self[index][x] = 0;
         }
     }
+
     fn remove_col(&mut self, index: usize) {
         for y in (index + 1)..5 {
             self[y][index] = 0;
         }
+    }
+
+    fn word_at_col(&self, index: usize) -> Word {
+        let mut word = [0; 5];
+        for y in 0..5 {
+            word[y] = self[y][index];
+        }
+        Word(word)
+    }
+
+    fn word_at_row(&self, index: usize) -> Word {
+        Word(self[index])
     }
 }
 
@@ -172,15 +185,15 @@ fn starting_letters_cache(words: &[Word]) -> HashMap<&[u8], Vec<Word>> {
 
 fn find_solutions(cache: HashMap<&[u8], Vec<Word>>) -> Vec<Grid> {
     let mut placed_words = HashSet::new();
-    let mut solution = Grid::default();
+    let solution = Grid::default();
 
-    place_pair_of_words(&cache, &mut placed_words, &mut solution, 0)
+    place_pair_of_words(&cache, &mut placed_words, solution, 0)
 }
 
 fn place_pair_of_words(
     cache: &HashMap<&[u8], Vec<Word>>,
     placed_words: &mut HashSet<Word>,
-    solution: &mut Grid,
+    mut solution: Grid,
     index: usize,
 ) -> Vec<Grid> {
     assert!(index < 5);
@@ -223,7 +236,7 @@ fn place_pair_of_words(
         placed_words.insert(*word);
         println!("Placed {word} at row {index}:\n{solution}\n-----");
 
-        let col = col_index(solution, index);
+        let col = solution.word_at_col(index);
         let possible_columns = match cache.get(to_slice(&col)) {
             Some(columns) => columns,
             None => {
@@ -255,10 +268,10 @@ fn place_pair_of_words(
 fn place_last_letter(
     cache: &HashMap<&[u8], Vec<Word>>,
     placed_words: &HashSet<Word>,
-    solution: &mut Grid,
+    mut solution: Grid,
 ) -> Vec<Grid> {
     let row = to_slice(&solution[4]);
-    let col_word = col_index(solution, 4);
+    let col_word = solution.word_at_col(4);
     let col = to_slice(&col_word);
     let row_words = match cache.get(row) {
         Some(v) => v,
@@ -285,7 +298,7 @@ fn place_last_letter(
     let mut solutions = Vec::new();
     for letter in letters {
         solution[4][4] = *letter;
-        solutions.push(*solution);
+        solutions.push(solution);
     }
     solution[4][4] = 0;
 
