@@ -223,23 +223,33 @@ fn place_pair_of_words(
 
 fn place_last_letter(
     cache: &HashMap<&[u8], Vec<Word>>,
-    placed_words: &mut HashSet<Word>,
+    placed_words: &HashSet<Word>,
     solution: &mut Grid,
 ) -> Vec<Grid> {
     let row = to_slice(&solution[4]);
     let col_word = col_index(solution, 4);
     let col = to_slice(&col_word);
-    let v = match cache.get(row) {
+    let row_words = match cache.get(row) {
         Some(v) => v,
         None => return Vec::new(),
     };
-    let row_words: HashSet<u8, RandomState> = HashSet::from_iter(v.iter().map(|w| w[4]));
-    let k = match cache.get(col) {
+    let row_words_binding: HashSet<Word, _> = HashSet::from_iter(row_words.iter().copied());
+    if !placed_words.is_disjoint(&row_words_binding) {
+        return Vec::new();
+    }
+    let row_letters: HashSet<u8, RandomState> = HashSet::from_iter(row_words.iter().map(|w| w[4]));
+
+    let col_words = match cache.get(col) {
         Some(k) => k,
         None => return Vec::new(),
     };
-    let col_words = HashSet::from_iter(k.iter().map(|w| w[4]));
-    let letters = row_words.intersection(&col_words);
+    let col_words_binding = HashSet::from_iter(col_words.iter().copied());
+    if !placed_words.is_disjoint(&col_words_binding) {
+        return Vec::new();
+    }
+    let col_letters = HashSet::from_iter(col_words.iter().map(|w| w[4]));
+
+    let letters = row_letters.intersection(&col_letters);
     println!("Found letters {:?}", letters.clone().collect_vec());
     let mut solutions = Vec::new();
     for letter in letters {
