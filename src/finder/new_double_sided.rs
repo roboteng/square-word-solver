@@ -160,6 +160,13 @@ fn place_pair_of_words(
             assert!(solution[y][x] == 0);
         }
     }
+    for x in 0..index {
+        for y in 0..5 {
+            assert!(solution[y][x] != 0);
+            assert!(solution[x][y] != 0);
+        }
+    }
+
     let mut solutions = Vec::new();
     if index == 4 {
         return place_last_letter(cache, placed_words, solution);
@@ -185,7 +192,9 @@ fn place_pair_of_words(
         let possible_columns = match cache.get(to_slice(&col)) {
             Some(columns) => columns,
             None => {
-                solution[index] = [0; 5];
+                for x in index..5 {
+                    solution[index][x] = 0;
+                }
                 placed_words.remove(word);
                 continue;
             }
