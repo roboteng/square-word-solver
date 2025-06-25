@@ -11,8 +11,14 @@ use itertools::Itertools;
 struct Letter(u8);
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct Word([u8; 5]);
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
 struct Grid([[u8; 5]; 5]);
+
+impl Grid {
+    fn place_row(&mut self, row: Word, index: usize) {
+        self[index] = *row;
+    }
+}
 
 impl Debug for Letter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -96,13 +102,12 @@ impl DerefMut for Grid {
         &mut self.0
     }
 }
-
 pub fn solutions<'a>(words: &[&'a str]) -> Vec<[&'a str; 5]> {
     let word_bytes = convert(words);
 
     let starting_cache = starting_letters_cache(&word_bytes);
 
-    let sols = find_solutions(starting_cache, &word_bytes);
+    let sols = find_solutions(starting_cache);
     convert_sols(words, sols)
 }
 
@@ -110,7 +115,7 @@ fn convert_sols<'a>(words: &[&'a str], sols: Vec<Grid>) -> Vec<[&'a str; 5]> {
     let pairs: HashMap<&[u8], &&str, RandomState> =
         HashMap::from_iter(words.iter().map(|w| (w.as_bytes(), w)));
     sols.iter()
-        .map(|sol| sol.0.map(|a| *pairs[a.as_slice()]))
+        .map(|sol| sol.map(|a| *pairs[a.as_slice()]))
         .collect()
 }
 
@@ -136,56 +141,9 @@ fn starting_letters_cache(words: &[Word]) -> HashMap<&[u8], Vec<Word>> {
     cache
 }
 
-fn find_solutions(cache: HashMap<&[u8], Vec<Word>>, words: &[Word]) -> Vec<Grid> {
-    let mut solution = Grid([[0; 5]; 5]);
-    let mut solutions = Vec::new();
-
-    for word1 in words {
-        solution[0] = word1.0;
-        for word2 in words {
-            solution[1] = word2.0;
-            for word3 in words {
-                solution[2] = word3.0;
-                if !are_cols_valid(&cache, &solution) {
-                    continue;
-                }
-                for word4 in words {
-                    solution[3] = word4.0;
-                    if !are_cols_valid(&cache, &solution) {
-                        continue;
-                    }
-                    for word5 in words {
-                        solution[4] = word5.0;
-                        if !are_cols_valid(&cache, &solution) {
-                            continue;
-                        }
-                        let mut valid = true;
-                        for x in 0..5 {
-                            let col = col_index(&solution, x);
-                            let col = to_slice(&col);
-                            if !cache.contains_key(col) {
-                                valid = false;
-                            }
-                        }
-                        if valid {
-                            solutions.push(solution);
-                        }
-                    }
-                    solution[4] = [0; 5];
-                }
-                solution[3] = [0; 5];
-            }
-            solution[2] = [0; 5];
-        }
-        solution[1] = [0; 5];
-    }
-
-    solutions
-}
-
-fn find_solutions2(cache: HashMap<&[u8], Vec<Word>>) -> Vec<Grid> {
+fn find_solutions(cache: HashMap<&[u8], Vec<Word>>) -> Vec<Grid> {
     let mut placed_words = HashSet::new();
-    let mut solution = Grid([[0; 5]; 5]);
+    let mut solution = Grid::default();
 
     place_pair_of_words(&cache, &mut placed_words, &mut solution, 0).unwrap_or_default()
 }
@@ -197,6 +155,11 @@ fn place_pair_of_words(
     index: usize,
 ) -> Option<Vec<Grid>> {
     assert!(index < 5);
+    for x in index..5 {
+        for y in index..5 {
+            assert!(solution[y][x] == 0);
+        }
+    }
     let mut solutions = Vec::new();
     if index == 4 {
         return place_last_letter(cache, placed_words, solution);
@@ -207,14 +170,29 @@ fn place_pair_of_words(
     let words = cache.get(current_row)?;
 
     for word in words {
-        solution[index] = word.0;
+        if placed_words.contains(word) {
+            println!("Solution already contains {word}");
+            continue;
+        }
+        solution.place_row(*word, index);
         placed_words.insert(*word);
         println!("Placed {word} at row {index}:\n{solution}\n-----");
 
         let col = col_index(solution, index);
-        let possible_columns = cache.get(to_slice(&col))?;
+        let possible_columns = match cache.get(to_slice(&col)) {
+            Some(columns) => columns,
+            None => {
+                solution[index] = [0; 5];
+                placed_words.remove(word);
+                continue;
+            }
+        };
 
         for w in possible_columns {
+            if placed_words.contains(w) {
+                println!("Solution already contains {w}");
+                continue;
+            }
             placed_words.insert(*w);
             for (i, &letter) in w.iter().enumerate() {
                 solution[i][index] = letter;
@@ -228,7 +206,7 @@ fn place_pair_of_words(
                 1 => &[(1, 2), (1, 3), (1, 4)],
                 2 => &[(2, 3), (2, 4)],
                 3 => &[(3, 4)],
-                _ => panic!("Index was higher than expected"),
+                _ => unreachable!("Index was higher than expected"),
             };
             for (x, y) in delete_positions {
                 solution[*y][*x] = 0;
@@ -404,7 +382,7 @@ mod tests {
         ];
         let words_ = convert(words.as_slice());
         let cache = starting_letters_cache(&words_);
-        let solutions = find_solutions2(cache);
+        let solutions = find_solutions(cache);
         assert_eq!(solutions.len(), 2);
     }
 
