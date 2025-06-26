@@ -11,7 +11,7 @@ use itertools::Itertools;
 struct Letter(u8);
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct Word([u8; 5]);
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, PartialEq, Eq, Default)]
 struct Grid([[u8; 5]; 5]);
 
 impl Grid {
@@ -185,15 +185,21 @@ fn starting_letters_cache(words: &[Word]) -> HashMap<&[u8], Vec<Word>> {
 
 fn find_solutions(cache: HashMap<&[u8], Vec<Word>>) -> Vec<Grid> {
     let mut placed_words = HashSet::new();
-    let solution = Grid::default();
+    let mut solution = Grid::default();
 
-    place_pair_of_words(&cache, &mut placed_words, solution, 0)
+    let original_solution = solution.clone();
+    let solutions = place_pair_of_words(&cache, &mut placed_words, &mut solution, 0);
+    assert_eq!(
+        original_solution, solution,
+        "sent:\n{original_solution}but got back:\n{solution}"
+    );
+    solutions
 }
 
 fn place_pair_of_words(
     cache: &HashMap<&[u8], Vec<Word>>,
     placed_words: &mut HashSet<Word>,
-    mut solution: Grid,
+    solution: &mut Grid,
     index: usize,
 ) -> Vec<Grid> {
     assert!(index < 5);
@@ -217,7 +223,13 @@ fn place_pair_of_words(
 
     let mut solutions = Vec::new();
     if index == 4 {
-        return place_last_letter(cache, placed_words, solution);
+        let original_solution = solution.clone();
+        let solutions = place_last_letter(cache, placed_words, solution);
+        assert_eq!(
+            original_solution, *solution,
+            "sent:\n{original_solution}but got back:\n{solution}"
+        );
+        return solutions;
     }
 
     println!("Starting at {index} with:\n{solution}\n-----");
@@ -253,8 +265,15 @@ fn place_pair_of_words(
             solution.place_col(*w, index);
 
             println!("Placed {w} at col {index}:\n{solution}\n-----");
-            let mut v = place_pair_of_words(cache, placed_words, solution, index + 1);
-            solutions.append(&mut v);
+
+            let original_solution = solution.clone();
+            let mut new_solutions = place_pair_of_words(cache, placed_words, solution, index + 1);
+            assert_eq!(
+                original_solution, *solution,
+                "sent:\n{original_solution}but got back:\n{solution}"
+            );
+
+            solutions.append(&mut new_solutions);
 
             solution.remove_col(index);
             placed_words.remove(w);
@@ -268,7 +287,7 @@ fn place_pair_of_words(
 fn place_last_letter(
     cache: &HashMap<&[u8], Vec<Word>>,
     placed_words: &HashSet<Word>,
-    mut solution: Grid,
+    solution: &mut Grid,
 ) -> Vec<Grid> {
     let row = to_slice(&solution[4]);
     let col_word = solution.word_at_col(4);
@@ -298,7 +317,7 @@ fn place_last_letter(
     let mut solutions = Vec::new();
     for letter in letters {
         solution[4][4] = *letter;
-        solutions.push(solution);
+        solutions.push(solution.clone());
     }
     solution[4][4] = 0;
 
