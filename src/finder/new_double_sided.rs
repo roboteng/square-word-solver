@@ -17,7 +17,7 @@ struct Grid([[u8; 5]; 5]);
 impl Grid {
     fn place_row(&mut self, row: Word, index: usize) {
         for x in 0..index {
-            assert!(
+            debug_assert!(
                 self[index][x] == row[x],
                 "Tried placing {row} in \n{self}at row {index}"
             );
@@ -27,7 +27,7 @@ impl Grid {
 
     fn place_col(&mut self, col: Word, index: usize) {
         for y in 0..index {
-            assert!(
+            debug_assert!(
                 self[y][index] == col[y],
                 "Tried placing {col} in \n{self}at col {index}"
             );
@@ -205,16 +205,16 @@ fn place_pair_of_words(
     assert!(index < 5);
     for x in index..5 {
         for y in index..5 {
-            assert!(solution[y][x] == 0, "{solution}was not empty at {y},{x}");
+            debug_assert!(solution[y][x] == 0, "{solution}was not empty at {y},{x}");
         }
     }
     for x in 0..index {
         for y in 0..5 {
-            assert!(
+            debug_assert!(
                 solution[y][x] != 0,
                 "{solution}should have been empty at {x},{y}"
             );
-            assert!(
+            debug_assert!(
                 solution[x][y] != 0,
                 "{solution}should have been empty at {y},{x}"
             );
@@ -225,14 +225,14 @@ fn place_pair_of_words(
     if index == 4 {
         let original_solution = solution.clone();
         let solutions = place_last_letter(cache, placed_words, solution);
-        assert_eq!(
+        debug_assert_eq!(
             original_solution, *solution,
             "sent:\n{original_solution}but got back:\n{solution}"
         );
         return solutions;
     }
 
-    println!("Starting at {index} with:\n{solution}\n-----");
+    // println!("Starting at {index} with:\n{solution}\n-----");
     let current_row = to_slice(&solution[index]);
     let words = match cache.get(current_row) {
         Some(w) => w,
@@ -241,34 +241,30 @@ fn place_pair_of_words(
 
     for word in words {
         if placed_words.contains(word) {
-            println!("Solution already contains {word}");
+            // println!("Solution already contains {word}");
             continue;
         }
         solution.place_row(*word, index);
         placed_words.insert(*word);
-        println!("Placed {word} at row {index}:\n{solution}\n-----");
+        // println!("Placed {word} at row {index}:\n{solution}\n-----");
 
         let col = solution.word_at_col(index);
-        let possible_columns = match cache.get(to_slice(&col)) {
-            Some(columns) => columns,
-            None => {
-                continue;
-            }
-        };
+        let empty_vec = Vec::new();
+        let possible_columns = cache.get(to_slice(&col)).unwrap_or(&empty_vec);
 
         for w in possible_columns {
             if placed_words.contains(w) {
-                println!("Solution already contains {w}");
+                // println!("Solution already contains {w}");
                 continue;
             }
             placed_words.insert(*w);
             solution.place_col(*w, index);
 
-            println!("Placed {w} at col {index}:\n{solution}\n-----");
+            // println!("Placed {w} at col {index}:\n{solution}\n-----");
 
             let original_solution = solution.clone();
             let mut new_solutions = place_pair_of_words(cache, placed_words, solution, index + 1);
-            assert_eq!(
+            debug_assert_eq!(
                 original_solution, *solution,
                 "sent:\n{original_solution}but got back:\n{solution}"
             );
@@ -313,7 +309,7 @@ fn place_last_letter(
     let col_letters = HashSet::from_iter(col_words.iter().map(|w| w[4]));
 
     let letters = row_letters.intersection(&col_letters);
-    println!("Found letters {:?}", letters.clone().collect_vec());
+    // println!("Found letters {:?}", letters.clone().collect_vec());
     let mut solutions = Vec::new();
     for letter in letters {
         solution[4][4] = *letter;
@@ -445,9 +441,9 @@ mod tests {
         let sols = solutions(&words);
         for sol in sols.iter() {
             for row in sol {
-                println!("{row}");
+                // println!("{row}");
             }
-            println!();
+            // println!();
         }
         assert_eq!(sols.len(), 2);
     }
