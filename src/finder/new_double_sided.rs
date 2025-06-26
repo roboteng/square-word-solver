@@ -239,28 +239,43 @@ fn place_pair_of_words(
         None => return Vec::new(),
     };
 
-    for word in words {
-        if placed_words.contains(word) {
+    for row_word in words {
+        if placed_words.contains(row_word) {
             // println!("Solution already contains {word}");
             continue;
         }
-        solution.place_row(*word, index);
-        placed_words.insert(*word);
+        solution.place_row(*row_word, index);
+        placed_words.insert(*row_word);
         // println!("Placed {word} at row {index}:\n{solution}\n-----");
+        if !((index)..5).all(|i| {
+            let col = solution.word_at_col(i);
+            cache.get(to_slice(&col)).is_some()
+        }) {
+            placed_words.remove(row_word);
+            continue;
+        }
 
         let col = solution.word_at_col(index);
         let empty_vec = Vec::new();
         let possible_columns = cache.get(to_slice(&col)).unwrap_or(&empty_vec);
 
-        for w in possible_columns {
-            if placed_words.contains(w) {
+        for col_word in possible_columns {
+            if placed_words.contains(col_word) {
                 // println!("Solution already contains {w}");
                 continue;
             }
-            placed_words.insert(*w);
-            solution.place_col(*w, index);
+            placed_words.insert(*col_word);
+            solution.place_col(*col_word, index);
 
             // println!("Placed {w} at col {index}:\n{solution}\n-----");
+
+            if !((index + 1)..5).all(|i| {
+                let row = solution.word_at_row(i);
+                cache.get(to_slice(&row)).is_some()
+            }) {
+                placed_words.remove(col_word);
+                continue;
+            }
 
             let original_solution = solution.clone();
             let mut new_solutions = place_pair_of_words(cache, placed_words, solution, index + 1);
@@ -271,12 +286,12 @@ fn place_pair_of_words(
 
             solutions.append(&mut new_solutions);
 
-            solution.remove_col(index);
-            placed_words.remove(w);
+            placed_words.remove(col_word);
         }
-        solution.remove_row(index);
-        placed_words.remove(word);
+        placed_words.remove(row_word);
+        solution.remove_col(index);
     }
+    solution.remove_row(index);
     solutions
 }
 
