@@ -9,7 +9,7 @@ use itertools::Itertools;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct Letter(u8);
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 struct Word([u8; 5]);
 #[derive(Clone, PartialEq, Eq, Default)]
 struct Grid([[u8; 5]; 5]);
@@ -59,6 +59,16 @@ impl Grid {
 
     fn word_at_row(&self, index: usize) -> Word {
         Word(self[index])
+    }
+
+    fn transpose(&self) -> Self {
+        let mut t = Self::default();
+        for x in 0..5 {
+            for y in 0..5 {
+                t[x][y] = self[y][x];
+            }
+        }
+        t
     }
 }
 
@@ -260,6 +270,9 @@ fn place_pair_of_words(
         let possible_columns = cache.get(to_slice(&col)).unwrap_or(&empty_vec);
 
         for col_word in possible_columns {
+            if index == 0 && row_word > col_word {
+                continue;
+            }
             if placed_words.contains(col_word) {
                 // println!("Solution already contains {w}");
                 continue;
@@ -329,6 +342,7 @@ fn place_last_letter(
     for letter in letters {
         solution[4][4] = *letter;
         solutions.push(solution.clone());
+        solutions.push(solution.transpose());
     }
     solution[4][4] = 0;
 
@@ -456,9 +470,9 @@ mod tests {
         let sols = solutions(&words);
         for sol in sols.iter() {
             for row in sol {
-                // println!("{row}");
+                println!("{row}");
             }
-            // println!();
+            println!();
         }
         assert_eq!(sols.len(), 2);
     }
