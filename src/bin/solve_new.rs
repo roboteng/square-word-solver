@@ -11,4 +11,5 @@ fn main() {
     let valid_words: Vec<&str> = valid_words.iter().take(n).map(|s| s.as_str()).collect();
 
     let _sols = crate::finder::new_double_sided::solutions(&valid_words);
+    println!("{_sols:?}");
 }
