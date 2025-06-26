@@ -13,7 +13,7 @@ struct Letter(u8);
 struct Word([u8; 5]);
 #[derive(Clone, PartialEq, Eq, Default)]
 struct Grid([[u8; 5]; 5]);
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct WordFrag<'a>(&'a [u8]);
 
 impl Grid {
@@ -144,6 +144,12 @@ impl<'a> From<&'a Word> for WordFrag<'a> {
     }
 }
 
+impl<'a> From<&'a [u8; 5]> for WordFrag<'a> {
+    fn from(value: &'a [u8; 5]) -> Self {
+        WordFrag(value)
+    }
+}
+
 impl<'a> std::hash::Hash for WordFrag<'a> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let mut data = [0; 5];
@@ -195,10 +201,10 @@ pub fn solutions<'a>(words: &[&'a str]) -> Vec<[&'a str; 5]> {
 }
 
 fn convert_sols<'a>(words: &[&'a str], sols: Vec<Grid>) -> Vec<[&'a str; 5]> {
-    let pairs: HashMap<&[u8], &&str, RandomState> =
-        HashMap::from_iter(words.iter().map(|w| (w.as_bytes(), w)));
+    let pairs: HashMap<WordFrag<'a>, &&str, RandomState> =
+        HashMap::from_iter(words.iter().map(|w| (WordFrag(w.as_bytes()), w)));
     sols.iter()
-        .map(|sol| sol.map(|a| *pairs[a.as_slice()]))
+        .map(|sol| sol.map(|a| *pairs[&WordFrag(a.as_slice())]))
         .collect()
 }
 
@@ -209,12 +215,12 @@ fn convert(words: &[&str]) -> Vec<Word> {
         .collect()
 }
 
-fn starting_letters_cache(words: &[Word]) -> HashMap<&[u8], Vec<Word>> {
-    let mut cache = HashMap::<&[u8], Vec<Word>>::new();
-    cache.insert(&[], words.to_vec());
+fn starting_letters_cache(words: &[Word]) -> HashMap<WordFrag<'_>, Vec<Word>> {
+    let mut cache = HashMap::<WordFrag<'_>, Vec<Word>>::new();
+    cache.insert(WordFrag(&[]), words.to_vec());
     for word in words {
         for i in 1..=5 {
-            let w = &word[0..i];
+            let w = WordFrag(&word[0..i]);
             cache
                 .entry(w)
                 .and_modify(|e: &mut Vec<Word>| e.push(*word))
@@ -224,7 +230,7 @@ fn starting_letters_cache(words: &[Word]) -> HashMap<&[u8], Vec<Word>> {
     cache
 }
 
-fn find_solutions(cache: HashMap<&[u8], Vec<Word>>) -> Vec<Grid> {
+fn find_solutions(cache: HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Grid> {
     let mut placed_words = HashSet::new();
     let mut solution = Grid::default();
 
@@ -238,7 +244,7 @@ fn find_solutions(cache: HashMap<&[u8], Vec<Word>>) -> Vec<Grid> {
 }
 
 fn place_pair_of_words(
-    cache: &HashMap<&[u8], Vec<Word>>,
+    cache: &HashMap<WordFrag<'_>, Vec<Word>>,
     placed_words: &mut HashSet<Word>,
     solution: &mut Grid,
     index: usize,
@@ -274,8 +280,9 @@ fn place_pair_of_words(
     }
 
     // println!("Starting at {index} with:\n{solution}\n-----");
-    let current_row = to_slice(&solution[index]);
-    let words = match cache.get(current_row) {
+    let binding = solution.word_at_row(index);
+    let current_row = to_slice(&binding);
+    let words = match cache.get(&current_row) {
         Some(w) => w,
         None => return Vec::new(),
     };
@@ -290,7 +297,7 @@ fn place_pair_of_words(
         // println!("Placed {word} at row {index}:\n{solution}\n-----");
         if !((index)..5).all(|i| {
             let col = solution.word_at_col(i);
-            cache.get(to_slice(&col)).is_some()
+            cache.get(&to_slice(&col)).is_some()
         }) {
             placed_words.remove(row_word);
             continue;
@@ -298,7 +305,7 @@ fn place_pair_of_words(
 
         let col = solution.word_at_col(index);
         let empty_vec = Vec::new();
-        let possible_columns = cache.get(to_slice(&col)).unwrap_or(&empty_vec);
+        let possible_columns = cache.get(&to_slice(&col)).unwrap_or(&empty_vec);
 
         for col_word in possible_columns {
             if index == 0 && row_word > col_word {
@@ -315,7 +322,7 @@ fn place_pair_of_words(
 
             if !((index + 1)..5).all(|i| {
                 let row = solution.word_at_row(i);
-                cache.get(to_slice(&row)).is_some()
+                cache.get(&to_slice(&row)).is_some()
             }) {
                 placed_words.remove(col_word);
                 continue;
@@ -340,14 +347,14 @@ fn place_pair_of_words(
 }
 
 fn place_last_letter(
-    cache: &HashMap<&[u8], Vec<Word>>,
+    cache: &HashMap<WordFrag<'_>, Vec<Word>>,
     placed_words: &HashSet<Word>,
     solution: &mut Grid,
 ) -> Vec<Grid> {
     let row = to_slice(&solution[4]);
     let col_word = solution.word_at_col(4);
     let col = to_slice(&col_word);
-    let row_words = match cache.get(row) {
+    let row_words = match cache.get(&row) {
         Some(v) => v,
         None => return Vec::new(),
     };
@@ -357,7 +364,7 @@ fn place_last_letter(
     }
     let row_letters: HashSet<u8, RandomState> = HashSet::from_iter(row_words.iter().map(|w| w[4]));
 
-    let col_words = match cache.get(col) {
+    let col_words = match cache.get(&col) {
         Some(k) => k,
         None => return Vec::new(),
     };
@@ -380,11 +387,11 @@ fn place_last_letter(
     solutions
 }
 
-fn are_cols_valid(cache: &HashMap<&[u8], Vec<Word>>, solution: &Grid) -> bool {
+fn are_cols_valid(cache: &HashMap<WordFrag<'_>, Vec<Word>>, solution: &Grid) -> bool {
     for i in 0..5 {
         let col = col_index(solution, i);
         let col = to_slice(&col);
-        if !cache.contains_key(col) {
+        if !cache.contains_key(&col) {
             return false;
         }
     }
@@ -400,13 +407,13 @@ fn col_index(solution: &[[u8; 5]; 5], index: usize) -> [u8; 5] {
 }
 
 /// Gives the slice until the first zero
-fn to_slice(word: &[u8; 5]) -> &[u8] {
+fn to_slice(word: &[u8; 5]) -> WordFrag<'_> {
     let first_zero = word
         .iter()
         .find_position(|n| **n == 0)
         .map(|(i, _)| i)
         .unwrap_or(5);
-    &word[0..first_zero]
+    WordFrag(&word[0..first_zero])
 }
 
 #[cfg(test)]
@@ -422,7 +429,7 @@ mod tests {
         let words = vec![Word(*b"words")];
         let cache = starting_letters_cache(&words);
         assert!(
-            cache.contains_key(b"words".as_slice()),
+            cache.contains_key(&WordFrag(b"words".as_slice())),
             "Couldn't find {} in {:?}",
             "words",
             cache,
@@ -434,7 +441,7 @@ mod tests {
         let words = vec![Word(*b"words")];
         let cache = starting_letters_cache(&words);
         assert!(
-            cache.contains_key(b"wo".as_slice()),
+            cache.contains_key(&WordFrag(b"wo".as_slice())),
             "Couldn't find {} in {:?}",
             "wo",
             cache,
@@ -446,7 +453,7 @@ mod tests {
         let words = vec![Word(*b"words")];
         let cache = starting_letters_cache(&words);
         assert_eq!(
-            cache.get(b"".as_slice()),
+            cache.get(&WordFrag(b"".as_slice())),
             Some(&words),
             "Couldn't find {} in {:?}",
             "",
@@ -459,7 +466,7 @@ mod tests {
         let words = vec![Word(*b"words")];
         let cache = starting_letters_cache(&words);
         assert!(
-            !cache.contains_key(b"asdf".as_slice()),
+            !cache.contains_key(&WordFrag(b"asdf".as_slice())),
             "Founnd {} in {:?}",
             "asdf",
             cache,
@@ -470,7 +477,7 @@ mod tests {
     fn to_slice_empty() {
         let word = [0; 5];
         let slice = to_slice(&word);
-        let expected: &[u8] = &[];
+        let expected = WordFrag(&[]);
 
         assert_eq!(slice, expected);
     }
@@ -479,7 +486,7 @@ mod tests {
     fn to_slice_full() {
         let word = [1; 5];
         let slice = to_slice(&word);
-        let expected: &[u8] = &[1, 1, 1, 1, 1];
+        let expected = WordFrag(&[1, 1, 1, 1, 1]);
 
         assert_eq!(slice, expected);
     }
@@ -489,9 +496,9 @@ mod tests {
         let mut word = [1; 5];
         word[3] = 0;
         let slice = to_slice(&word);
-        let expected: &[u8] = &[1, 1, 1];
+        let expected = &[1, 1, 1];
 
-        assert_eq!(slice, expected);
+        assert_eq!(slice, WordFrag(expected));
     }
 
     #[test]
@@ -564,7 +571,7 @@ mod tests {
     fn time_word_frag_hash(b: &mut Bencher) {
         let mut h = DefaultHasher::new();
         let data: &[u8] = [1, 2, 3, 4, 5].as_slice();
-        let frag = WordFrag(&data);
+        let frag = WordFrag(data);
         b.iter(|| {
             Hash::hash(&frag, &mut h);
         })
