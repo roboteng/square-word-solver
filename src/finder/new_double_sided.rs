@@ -13,6 +13,8 @@ struct Letter(u8);
 struct Word([u8; 5]);
 #[derive(Clone, PartialEq, Eq, Default)]
 struct Grid([[u8; 5]; 5]);
+#[derive(Clone, PartialEq, Eq)]
+struct WordFrag<'a>(&'a [u8]);
 
 impl Grid {
     fn place_row(&mut self, row: Word, index: usize) {
@@ -122,6 +124,35 @@ impl From<[u8; 5]> for Word {
 impl From<u8> for Letter {
     fn from(value: u8) -> Self {
         Letter(value)
+    }
+}
+
+impl<'a> TryFrom<&'a [u8]> for WordFrag<'a> {
+    type Error = ();
+    fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
+        if value.len() > 5 {
+            Err(())
+        } else {
+            Ok(WordFrag(value))
+        }
+    }
+}
+
+impl<'a> From<&'a Word> for WordFrag<'a> {
+    fn from(value: &'a Word) -> Self {
+        WordFrag(value.as_slice())
+    }
+}
+
+impl<'a> std::hash::Hash for WordFrag<'a> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let mut data = [0; 5];
+        for (i, elem) in self.0.iter().enumerate() {
+            data[i] = *elem as u32;
+        }
+        let l = data[0] | data[1] << 5 | data[2] << 10 | data[3] << 15 | data[4] << 20;
+
+        l.hash(state);
     }
 }
 
@@ -380,7 +411,7 @@ fn to_slice(word: &[u8; 5]) -> &[u8] {
 
 #[cfg(test)]
 mod tests {
-    use std::hash::{DefaultHasher, Hash, SipHasher};
+    use std::hash::{DefaultHasher, Hash};
 
     use super::*;
     extern crate test;
@@ -526,6 +557,16 @@ mod tests {
             ];
             let l = a[0] | a[1] << 5 | a[2] << 10 | a[3] << 15 | a[4] << 20;
             Hash::hash(&l, &mut h);
+        })
+    }
+
+    #[bench]
+    fn time_word_frag_hash(b: &mut Bencher) {
+        let mut h = DefaultHasher::new();
+        let data: &[u8] = [1, 2, 3, 4, 5].as_slice();
+        let frag = WordFrag(&data);
+        b.iter(|| {
+            Hash::hash(&frag, &mut h);
         })
     }
 }
