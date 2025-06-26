@@ -380,6 +380,8 @@ fn to_slice(word: &[u8; 5]) -> &[u8] {
 
 #[cfg(test)]
 mod tests {
+    use std::hash::{DefaultHasher, Hash, SipHasher};
+
     use super::*;
     extern crate test;
     use test::Bencher;
@@ -499,5 +501,31 @@ mod tests {
         b.iter(|| {
             solutions(&words);
         });
+    }
+
+    #[bench]
+    fn time_u8_slice_hash(b: &mut Bencher) {
+        let mut h = DefaultHasher::new();
+        let data: &[u8] = [1, 2, 3, 4, 5].as_slice();
+        b.iter(|| {
+            Hash::hash(&data, &mut h);
+        })
+    }
+
+    #[bench]
+    fn time_u8_slice_as_u32_hash(b: &mut Bencher) {
+        let mut h = DefaultHasher::new();
+        let data: &[u8] = [1, 2, 3, 4, 5].as_slice();
+        b.iter(|| {
+            let a: [u32; 5] = [
+                data[0] as u32,
+                data[1] as u32,
+                data[2] as u32,
+                data[3] as u32,
+                data[4] as u32,
+            ];
+            let l = a[0] | a[1] << 5 | a[2] << 10 | a[3] << 15 | a[4] << 20;
+            Hash::hash(&l, &mut h);
+        })
     }
 }
