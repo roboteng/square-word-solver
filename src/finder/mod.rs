@@ -460,4 +460,22 @@ mod test {
         }
         assert_eq!(double_sols.len(), sols.len());
     }
+
+    #[test]
+    fn simple_case_3() {
+        let input = [
+            "cdcbf", "gbadf", "fadfb", "fbbdf", "dccac", "bfcfa", "fccgb", "adcbf", "cccbc",
+            "aaaaa",
+        ];
+        let oracle = TrivialFinder::new(&input);
+        let double = DoubleSidedFinder::<BinSearchRange>::new(&input);
+        let sols = new_double_sided::solutions(&input);
+
+        assert_eq!(oracle.find().len(), sols.len());
+        let double_sols = double.find();
+        for sol in double_sols.iter() {
+            println!("Solution is:\n{sol}");
+        }
+        assert_eq!(double_sols.len(), sols.len());
+    }
 }

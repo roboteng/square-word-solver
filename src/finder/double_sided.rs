@@ -264,6 +264,7 @@ impl<'a, R: RangeFinder<'a>> Inner<'a, R> {
                 self.row_indexes
                     .iter()
                     .chain(self.column_indexes.iter())
+                    .chain(&[last_col])
                     .copied()
                     .duplicates()
                     .next()
