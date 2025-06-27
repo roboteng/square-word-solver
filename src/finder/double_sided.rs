@@ -261,9 +261,13 @@ impl<'a, R: RangeFinder<'a>> Inner<'a, R> {
                     return false;
                 }
 
-                ![self.row_indexes.clone(), self.column_indexes.clone()]
-                    .concat()
-                    .contains(&last_col)
+                self.row_indexes
+                    .iter()
+                    .chain(self.column_indexes.iter())
+                    .copied()
+                    .duplicates()
+                    .next()
+                    .is_none()
             }
             None => false,
         }

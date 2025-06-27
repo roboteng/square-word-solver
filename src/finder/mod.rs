@@ -196,7 +196,7 @@ impl PuzzleViewModel {
 
 #[cfg(test)]
 mod test {
-    use crate::SolutionFinder;
+    use crate::{BinSearchRange, SolutionFinder};
 
     use super::*;
     use pretty_assertions::assert_eq;
@@ -441,5 +441,23 @@ mod test {
         let sols = new_double_sided::solutions(&input);
         println!("{}", sols.iter().map(|sol| sol.join("\n")).join("\n\n"));
         assert_eq!(f.find().len(), sols.len());
+    }
+
+    #[test]
+    fn simple_case_2() {
+        let input = [
+            "aaaaa", "gfgdg", "fefgc", "cfbff", "ffefa", "ffcdd", "gfegf", "ebfcb", "gcfff",
+            "fabgd",
+        ];
+        let f = TrivialFinder::new(&input);
+        let double = DoubleSidedFinder::<BinSearchRange>::new(&input);
+        let sols = new_double_sided::solutions(&input);
+
+        assert_eq!(f.find().len(), sols.len());
+        let double_sols = double.find();
+        for sol in double_sols.iter() {
+            println!("Solution is:\n{sol}");
+        }
+        assert_eq!(double_sols.len(), sols.len());
     }
 }

@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc bc0e610a0000cf7e9409fa095f80720ac74429d2d5bf8cfd685a62f1e5b19135 # shrinks to s = ["cdcbf", "gbadf", "fadfb", "fbbdf", "dccac", "bfcfa", "fccgb", "adcbf", "cccbc", "aaaaa"]
+cc 2865729684dd039c70a7c1099fde79808fb58e23215319a8f28c5a36df6482db # shrinks to s = ["aaaaa", "gfgdg", "fefgc", "cfbff", "ffefa", "ffcdd", "gfegf", "ebfcb", "gcfff", "fabgd"]
