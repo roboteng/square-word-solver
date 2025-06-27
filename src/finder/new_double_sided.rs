@@ -13,7 +13,7 @@ struct Letter(u8);
 struct Word([u8; 5]);
 #[derive(Clone, PartialEq, Eq, Default)]
 struct Grid([[u8; 5]; 5]);
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct WordFrag<'a>(&'a [u8]);
 
 impl Grid {
@@ -150,17 +150,17 @@ impl<'a> From<&'a [u8; 5]> for WordFrag<'a> {
     }
 }
 
-impl<'a> std::hash::Hash for WordFrag<'a> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let mut data = [0; 5];
-        for (i, elem) in self.0.iter().enumerate() {
-            data[i] = *elem as u32;
-        }
-        let l = data[0] | data[1] << 5 | data[2] << 10 | data[3] << 15 | data[4] << 20;
+// impl<'a> std::hash::Hash for WordFrag<'a> {
+//     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+//         let mut data = [0; 5];
+//         for (i, elem) in self.0.iter().enumerate() {
+//             data[i] = *elem as u32;
+//         }
+//         let l = data[0] | data[1] << 5 | data[2] << 10 | data[3] << 15 | data[4] << 20;
 
-        l.hash(state);
-    }
-}
+//         l.hash(state);
+//     }
+// }
 
 impl Deref for Letter {
     type Target = u8;
@@ -268,7 +268,6 @@ fn place_pair_of_words(
         }
     }
 
-    let mut solutions = Vec::new();
     if index == 4 {
         let original_solution = solution.clone();
         let solutions = place_last_letter(cache, placed_words, solution);
@@ -287,6 +286,7 @@ fn place_pair_of_words(
         None => return Vec::new(),
     };
 
+    let mut solutions = Vec::new();
     for row_word in words {
         if placed_words.contains(row_word) {
             // println!("Solution already contains {word}");
@@ -354,6 +354,11 @@ fn place_last_letter(
     let row = to_slice(&solution[4]);
     let col_word = solution.word_at_col(4);
     let col = to_slice(&col_word);
+
+    if row == col {
+        return Vec::new();
+    }
+
     let row_words = match cache.get(&row) {
         Some(v) => v,
         None => return Vec::new(),
@@ -419,6 +424,8 @@ fn to_slice(word: &[u8; 5]) -> WordFrag<'_> {
 #[cfg(test)]
 mod tests {
     use std::hash::{DefaultHasher, Hash};
+
+    use crate::{BinSearchRange, SolutionFinder, finder::DoubleSidedFinder};
 
     use super::*;
     extern crate test;
@@ -575,5 +582,19 @@ mod tests {
         b.iter(|| {
             Hash::hash(&frag, &mut h);
         })
+    }
+
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        #[ignore = "expensive"]
+        fn prop_doesnt_crash(s in prop::collection::vec("[a-g]{5}", 10..300)) {
+            let ss = s.iter().map(|a| a.as_str()).collect_vec();
+            let k = solutions(&ss);
+            let d = DoubleSidedFinder::<BinSearchRange>::new(&ss);
+            let o = d.find();
+            assert_eq!(o.len(), k.len());
+        }
     }
 }

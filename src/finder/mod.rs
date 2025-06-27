@@ -196,6 +196,8 @@ impl PuzzleViewModel {
 
 #[cfg(test)]
 mod test {
+    use crate::SolutionFinder;
+
     use super::*;
     use pretty_assertions::assert_eq;
 
@@ -427,5 +429,17 @@ mod test {
         let b = "bca".into();
 
         assert!(a.is_equivalent_to(&b));
+    }
+
+    #[test]
+    fn simple_case() {
+        let input = [
+            "cdcbf", "gbadf", "fadfb", "fbbdf", "dccac", "bfcfa", "fccgb", "adcbf", "cccbc",
+            "aaaaa",
+        ];
+        let f = TrivialFinder::new(&input);
+        let sols = new_double_sided::solutions(&input);
+        println!("{}", sols.iter().map(|sol| sol.join("\n")).join("\n\n"));
+        assert_eq!(f.find().len(), sols.len());
     }
 }

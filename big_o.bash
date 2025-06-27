@@ -15,7 +15,7 @@ echo "Argument,Execution Time" > output.csv
 # Loop through every multiple of 100 between 1700 and 3400
 for ((number = 100; number <= 3400; number += 100)); do
   # Run the binary with the current number and measure execution time
-  execution_time=$(measure_execution_time ./target/release/solve $number)
+  execution_time=$(measure_execution_time ~/.cargo/target/release/solve_new $number)
 
   # Append the argument and execution time to the CSV file
   echo "$number,$execution_time" >> output.csv
