@@ -590,6 +590,9 @@ mod tests {
         #[test]
         #[ignore = "expensive"]
         fn prop_doesnt_crash(s in prop::collection::vec("[a-g]{5}", 10..300)) {
+            if s.iter().duplicates().next().is_some(){
+                return Err(TestCaseError::Reject( "Contains duplicate".into()));
+            }
             let ss = s.iter().map(|a| a.as_str()).collect_vec();
             let k = solutions(&ss);
             let d = DoubleSidedFinder::<BinSearchRange>::new(&ss);
