@@ -95,6 +95,13 @@ impl Display for Word {
     }
 }
 
+impl Display for WordFrag<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = str::from_utf8(self.0).unwrap();
+        f.write_str(s)
+    }
+}
+
 impl Debug for Grid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("Grid").field(&self.0).finish()
@@ -364,20 +371,15 @@ fn place_last_letter(
         None => return Vec::new(),
     };
     let row_words_binding: HashSet<Word, _> = HashSet::from_iter(row_words.iter().copied());
-    if !placed_words.is_disjoint(&row_words_binding) {
-        return Vec::new();
-    }
-    let row_letters: HashSet<u8, RandomState> = HashSet::from_iter(row_words.iter().map(|w| w[4]));
+    let row_letters: HashSet<u8, RandomState> =
+        HashSet::from_iter(row_words_binding.difference(placed_words).map(|w| w[4]));
 
     let col_words = match cache.get(&col) {
         Some(k) => k,
         None => return Vec::new(),
     };
     let col_words_binding = HashSet::from_iter(col_words.iter().copied());
-    if !placed_words.is_disjoint(&col_words_binding) {
-        return Vec::new();
-    }
-    let col_letters = HashSet::from_iter(col_words.iter().map(|w| w[4]));
+    let col_letters = HashSet::from_iter(col_words_binding.difference(placed_words).map(|w| w[4]));
 
     let letters = row_letters.intersection(&col_letters);
     // println!("Found letters {:?}", letters.clone().collect_vec());
