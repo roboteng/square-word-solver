@@ -1,201 +1,217 @@
 use std::{
     collections::{HashMap, HashSet},
-    fmt::{Debug, Display},
     hash::RandomState,
-    ops::{Deref, DerefMut},
 };
 
+use data::*;
 use itertools::Itertools;
+mod data {
+    use std::{
+        fmt::{Debug, Display},
+        ops::{Deref, DerefMut},
+    };
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub struct Letter(u8);
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    pub struct Word([u8; 5]);
+    #[derive(Clone, PartialEq, Eq, Default)]
+    pub struct Grid([[u8; 5]; 5]);
+    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    pub struct WordFrag<'a>(&'a [u8]);
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-struct Letter(u8);
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-struct Word([u8; 5]);
-#[derive(Clone, PartialEq, Eq, Default)]
-struct Grid([[u8; 5]; 5]);
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct WordFrag<'a>(&'a [u8]);
-
-impl Grid {
-    fn place_row(&mut self, row: Word, index: usize) {
-        for x in 0..index {
-            debug_assert!(
-                self[index][x] == row[x],
-                "Tried placing {row} in \n{self}at row {index}"
-            );
+    impl Grid {
+        pub fn place_row(&mut self, row: Word, index: usize) {
+            for x in 0..index {
+                debug_assert!(
+                    self[index][x] == row[x],
+                    "Tried placing {row} in \n{self}at row {index}"
+                );
+            }
+            self[index] = *row;
         }
-        self[index] = *row;
-    }
 
-    fn place_col(&mut self, col: Word, index: usize) {
-        for y in 0..index {
-            debug_assert!(
-                self[y][index] == col[y],
-                "Tried placing {col} in \n{self}at col {index}"
-            );
-        }
-        for y in index..5 {
-            self[y][index] = col[y];
-        }
-    }
-
-    fn remove_row(&mut self, index: usize) {
-        for x in index..5 {
-            self[index][x] = 0;
-        }
-    }
-
-    fn remove_col(&mut self, index: usize) {
-        for y in (index + 1)..5 {
-            self[y][index] = 0;
-        }
-    }
-
-    fn word_at_col(&self, index: usize) -> Word {
-        let mut word = [0; 5];
-        for y in 0..5 {
-            word[y] = self[y][index];
-        }
-        Word(word)
-    }
-
-    fn word_at_row(&self, index: usize) -> Word {
-        Word(self[index])
-    }
-
-    fn transpose(&self) -> Self {
-        let mut t = Self::default();
-        for x in 0..5 {
-            for y in 0..5 {
-                t[x][y] = self[y][x];
+        pub fn place_col(&mut self, col: Word, index: usize) {
+            for y in 0..index {
+                debug_assert!(
+                    self[y][index] == col[y],
+                    "Tried placing {col} in \n{self}at col {index}"
+                );
+            }
+            for y in index..5 {
+                self[y][index] = col[y];
             }
         }
-        t
-    }
-}
 
-impl Debug for Letter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Debug::fmt(&str::from_utf8(&[self.0]).unwrap_or(" "), f)
-    }
-}
-impl Display for Letter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&str::from_utf8(&[self.0]).unwrap_or(" "), f)
-    }
-}
-impl Debug for Word {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Debug::fmt(str::from_utf8(self.0.as_slice()).unwrap_or("     "), f)
-    }
-}
-impl Display for Word {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(str::from_utf8(self.0.as_slice()).unwrap_or("     "), f)
-    }
-}
-
-impl Display for WordFrag<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = str::from_utf8(self.0).unwrap();
-        f.write_str(s)
-    }
-}
-
-impl Debug for Grid {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("Grid").field(&self.0).finish()
-    }
-}
-impl Display for Grid {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for row in self.0 {
-            Display::fmt(&Word(row), f)?;
-            f.write_str("\n")?
+        pub fn remove_row(&mut self, index: usize) {
+            for x in index..5 {
+                self[index][x] = 0;
+            }
         }
-        Ok(())
-    }
-}
 
-impl From<[[u8; 5]; 5]> for Grid {
-    fn from(value: [[u8; 5]; 5]) -> Self {
-        Grid(value)
-    }
-}
+        pub fn remove_col(&mut self, index: usize) {
+            for y in (index + 1)..5 {
+                self[y][index] = 0;
+            }
+        }
 
-impl From<[u8; 5]> for Word {
-    fn from(value: [u8; 5]) -> Self {
-        Word(value)
-    }
-}
-impl From<u8> for Letter {
-    fn from(value: u8) -> Self {
-        Letter(value)
-    }
-}
+        pub fn word_at_col(&self, index: usize) -> Word {
+            let mut word = [0; 5];
+            for y in 0..5 {
+                word[y] = self[y][index];
+            }
+            Word(word)
+        }
 
-impl<'a> TryFrom<&'a [u8]> for WordFrag<'a> {
-    type Error = ();
-    fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
-        if value.len() > 5 {
-            Err(())
-        } else {
-            Ok(WordFrag(value))
+        pub fn word_at_row(&self, index: usize) -> Word {
+            Word(self[index])
+        }
+
+        pub fn transpose(&self) -> Self {
+            let mut t = Self::default();
+            for x in 0..5 {
+                for y in 0..5 {
+                    t[x][y] = self[y][x];
+                }
+            }
+            t
         }
     }
-}
 
-impl<'a> From<&'a Word> for WordFrag<'a> {
-    fn from(value: &'a Word) -> Self {
-        WordFrag(value.as_slice())
+    impl<'a> WordFrag<'a> {
+        pub fn new(value: &'a [u8]) -> Self {
+            WordFrag(value)
+        }
     }
-}
 
-impl<'a> From<&'a [u8; 5]> for WordFrag<'a> {
-    fn from(value: &'a [u8; 5]) -> Self {
-        WordFrag(value)
+    impl Word {
+        pub fn new(value: [u8; 5]) -> Self {
+            Word(value)
+        }
     }
-}
 
-// impl<'a> std::hash::Hash for WordFrag<'a> {
-//     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-//         let mut data = [0; 5];
-//         for (i, elem) in self.0.iter().enumerate() {
-//             data[i] = *elem as u32;
-//         }
-//         let l = data[0] | data[1] << 5 | data[2] << 10 | data[3] << 15 | data[4] << 20;
-
-//         l.hash(state);
-//     }
-// }
-
-impl Deref for Letter {
-    type Target = u8;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    impl Debug for Letter {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            Debug::fmt(&str::from_utf8(&[self.0]).unwrap_or(" "), f)
+        }
     }
-}
-
-impl Deref for Word {
-    type Target = [u8; 5];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    impl Display for Letter {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            Display::fmt(&str::from_utf8(&[self.0]).unwrap_or(" "), f)
+        }
     }
-}
-
-impl Deref for Grid {
-    type Target = [[u8; 5]; 5];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    impl Debug for Word {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            Debug::fmt(str::from_utf8(self.0.as_slice()).unwrap_or("     "), f)
+        }
     }
-}
+    impl Display for Word {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            Display::fmt(str::from_utf8(self.0.as_slice()).unwrap_or("     "), f)
+        }
+    }
 
-impl DerefMut for Grid {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+    impl Display for WordFrag<'_> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let s = str::from_utf8(self.0).unwrap();
+            f.write_str(s)
+        }
+    }
+
+    impl Debug for Grid {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_tuple("Grid").field(&self.0).finish()
+        }
+    }
+    impl Display for Grid {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            for row in self.0 {
+                Display::fmt(&Word(row), f)?;
+                f.write_str("\n")?
+            }
+            Ok(())
+        }
+    }
+
+    impl From<[[u8; 5]; 5]> for Grid {
+        fn from(value: [[u8; 5]; 5]) -> Self {
+            Grid(value)
+        }
+    }
+
+    impl From<[u8; 5]> for Word {
+        fn from(value: [u8; 5]) -> Self {
+            Word(value)
+        }
+    }
+    impl From<u8> for Letter {
+        fn from(value: u8) -> Self {
+            Letter(value)
+        }
+    }
+
+    impl<'a> TryFrom<&'a [u8]> for WordFrag<'a> {
+        type Error = ();
+        fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
+            if value.len() > 5 {
+                Err(())
+            } else {
+                Ok(WordFrag(value))
+            }
+        }
+    }
+
+    impl<'a> From<&'a Word> for WordFrag<'a> {
+        fn from(value: &'a Word) -> Self {
+            WordFrag(value.as_slice())
+        }
+    }
+
+    impl<'a> From<&'a [u8; 5]> for WordFrag<'a> {
+        fn from(value: &'a [u8; 5]) -> Self {
+            WordFrag(value)
+        }
+    }
+
+    // impl<'a> std::hash::Hash for WordFrag<'a> {
+    //     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    //         let mut data = [0; 5];
+    //         for (i, elem) in self.0.iter().enumerate() {
+    //             data[i] = *elem as u32;
+    //         }
+    //         let l = data[0] | data[1] << 5 | data[2] << 10 | data[3] << 15 | data[4] << 20;
+
+    //         l.hash(state);
+    //     }
+    // }
+
+    impl Deref for Letter {
+        type Target = u8;
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl Deref for Word {
+        type Target = [u8; 5];
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl Deref for Grid {
+        type Target = [[u8; 5]; 5];
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl DerefMut for Grid {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
     }
 }
 pub fn solutions<'a>(words: &[&'a str]) -> Vec<[&'a str; 5]> {
@@ -209,25 +225,25 @@ pub fn solutions<'a>(words: &[&'a str]) -> Vec<[&'a str; 5]> {
 
 fn convert_sols<'a>(words: &[&'a str], sols: Vec<Grid>) -> Vec<[&'a str; 5]> {
     let pairs: HashMap<WordFrag<'a>, &&str, RandomState> =
-        HashMap::from_iter(words.iter().map(|w| (WordFrag(w.as_bytes()), w)));
+        HashMap::from_iter(words.iter().map(|w| (WordFrag::new(w.as_bytes()), w)));
     sols.iter()
-        .map(|sol| sol.map(|a| *pairs[&WordFrag(a.as_slice())]))
+        .map(|sol| sol.map(|a| *pairs[&WordFrag::new(a.as_slice())]))
         .collect()
 }
 
 fn convert(words: &[&str]) -> Vec<Word> {
     words
         .iter()
-        .map(|w| Word(w.as_bytes().try_into().unwrap()))
+        .map(|w| Word::new(w.as_bytes().try_into().unwrap()))
         .collect()
 }
 
 fn starting_letters_cache(words: &[Word]) -> HashMap<WordFrag<'_>, Vec<Word>> {
     let mut cache = HashMap::<WordFrag<'_>, Vec<Word>>::new();
-    cache.insert(WordFrag(&[]), words.to_vec());
+    cache.insert(WordFrag::new(&[]), words.to_vec());
     for word in words {
         for i in 1..=5 {
-            let w = WordFrag(&word[0..i]);
+            let w = WordFrag::new(&word[0..i]);
             cache
                 .entry(w)
                 .and_modify(|e: &mut Vec<Word>| e.push(*word))
@@ -420,7 +436,7 @@ fn to_slice(word: &[u8; 5]) -> WordFrag<'_> {
         .find_position(|n| **n == 0)
         .map(|(i, _)| i)
         .unwrap_or(5);
-    WordFrag(&word[0..first_zero])
+    WordFrag::new(&word[0..first_zero])
 }
 
 #[cfg(test)]
@@ -435,10 +451,10 @@ mod tests {
 
     #[test]
     fn cache_hit_exact() {
-        let words = vec![Word(*b"words")];
+        let words = vec![Word::new(*b"words")];
         let cache = starting_letters_cache(&words);
         assert!(
-            cache.contains_key(&WordFrag(b"words".as_slice())),
+            cache.contains_key(&WordFrag::new(b"words".as_slice())),
             "Couldn't find {} in {:?}",
             "words",
             cache,
@@ -447,10 +463,10 @@ mod tests {
 
     #[test]
     fn cache_hit_partial() {
-        let words = vec![Word(*b"words")];
+        let words = vec![Word::new(*b"words")];
         let cache = starting_letters_cache(&words);
         assert!(
-            cache.contains_key(&WordFrag(b"wo".as_slice())),
+            cache.contains_key(&WordFrag::new(b"wo".as_slice())),
             "Couldn't find {} in {:?}",
             "wo",
             cache,
@@ -459,10 +475,10 @@ mod tests {
 
     #[test]
     fn cache_hit_empty() {
-        let words = vec![Word(*b"words")];
+        let words = vec![Word::new(*b"words")];
         let cache = starting_letters_cache(&words);
         assert_eq!(
-            cache.get(&WordFrag(b"".as_slice())),
+            cache.get(&WordFrag::new(b"".as_slice())),
             Some(&words),
             "Couldn't find {} in {:?}",
             "",
@@ -472,10 +488,10 @@ mod tests {
 
     #[test]
     fn cache_miss() {
-        let words = vec![Word(*b"words")];
+        let words = vec![Word::new(*b"words")];
         let cache = starting_letters_cache(&words);
         assert!(
-            !cache.contains_key(&WordFrag(b"asdf".as_slice())),
+            !cache.contains_key(&WordFrag::new(b"asdf".as_slice())),
             "Founnd {} in {:?}",
             "asdf",
             cache,
@@ -486,7 +502,7 @@ mod tests {
     fn to_slice_empty() {
         let word = [0; 5];
         let slice = to_slice(&word);
-        let expected = WordFrag(&[]);
+        let expected = WordFrag::new(&[]);
 
         assert_eq!(slice, expected);
     }
@@ -495,7 +511,7 @@ mod tests {
     fn to_slice_full() {
         let word = [1; 5];
         let slice = to_slice(&word);
-        let expected = WordFrag(&[1, 1, 1, 1, 1]);
+        let expected = WordFrag::new(&[1, 1, 1, 1, 1]);
 
         assert_eq!(slice, expected);
     }
@@ -507,7 +523,7 @@ mod tests {
         let slice = to_slice(&word);
         let expected = &[1, 1, 1];
 
-        assert_eq!(slice, WordFrag(expected));
+        assert_eq!(slice, WordFrag::new(expected));
     }
 
     #[test]
@@ -580,7 +596,7 @@ mod tests {
     fn time_word_frag_hash(b: &mut Bencher) {
         let mut h = DefaultHasher::new();
         let data: &[u8] = [1, 2, 3, 4, 5].as_slice();
-        let frag = WordFrag(data);
+        let frag = WordFrag::new(data);
         b.iter(|| {
             Hash::hash(&frag, &mut h);
         })
