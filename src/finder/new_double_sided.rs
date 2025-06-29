@@ -253,36 +253,54 @@ fn starting_letters_cache(words: &[Word]) -> HashMap<WordFrag<'_>, Vec<Word>> {
     cache
 }
 
-fn find_solutions(cache: HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Grid> {
-    let mut placed_words = HashSet::new();
-    let mut solution = Grid::default();
-
-    let original_solution = solution.clone();
-    let solutions = place_pair_of_words(&cache, &mut placed_words, &mut solution, 0);
-    assert_eq!(
-        original_solution, solution,
-        "sent:\n{original_solution}but got back:\n{solution}"
-    );
-    solutions
-}
-
-fn place_first_pair_of_words(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Grid> {
+fn first_pair(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> impl Iterator<Item = (Word, Word)> {
     cache
         .get(&WordFrag::default())
         .unwrap()
         .iter()
         .cartesian_product(cache.get(&WordFrag::default()).unwrap().iter())
-        .filter(|&(a, b): &(&Word, &Word)| (a > b) && (a[0] == b[0]))
-        .flat_map(|(a, b): (&Word, &Word)| {
+        .filter_map(|(&a, &b): (&Word, &Word)| {
+            if (a > b) && (a[0] == b[0]) {
+                Some((a, b))
+            } else {
+                None
+            }
+        })
+}
+
+#[cfg(feature = "multi-thread")]
+fn place_first_pair_of_words(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Grid> {
+    use rayon::iter::IntoParallelIterator;
+    use rayon::iter::ParallelIterator;
+
+    first_pair(cache)
+        .collect_vec()
+        .into_par_iter()
+        .flat_map(|(a, b): (Word, Word)| {
             let mut solution = Grid::default();
             let mut placed_words = HashSet::new();
-            solution.place_row(*a, 0);
-            solution.place_col(*b, 0);
-            placed_words.insert(*a);
-            placed_words.insert(*b);
+            solution.place_row(a, 0);
+            solution.place_col(b, 0);
+            placed_words.insert(a);
+            placed_words.insert(b);
             place_pair_of_words(cache, &mut placed_words, &mut solution, 1)
         })
-        .collect_vec()
+        .collect()
+}
+
+#[cfg(not(feature = "multi-thread"))]
+fn place_first_pair_of_words(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Grid> {
+    first_pair(cache)
+        .flat_map(|(a, b): (Word, Word)| {
+            let mut solution = Grid::default();
+            let mut placed_words = HashSet::new();
+            solution.place_row(a, 0);
+            solution.place_col(b, 0);
+            placed_words.insert(a);
+            placed_words.insert(b);
+            place_pair_of_words(cache, &mut placed_words, &mut solution, 1)
+        })
+        .collect()
 }
 
 fn place_pair_of_words(
@@ -568,7 +586,7 @@ mod tests {
         ];
         let words_ = convert(words.as_slice());
         let cache = starting_letters_cache(&words_);
-        let solutions = find_solutions(cache);
+        let solutions = place_first_pair_of_words(&cache);
         assert_eq!(solutions.len(), 2);
     }
 
