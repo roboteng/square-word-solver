@@ -16,7 +16,7 @@ mod data {
     pub struct Word([u8; 5]);
     #[derive(Clone, PartialEq, Eq, Default)]
     pub struct Grid([[u8; 5]; 5]);
-    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
     pub struct WordFrag<'a>(&'a [u8]);
 
     impl Grid {
@@ -219,7 +219,7 @@ pub fn solutions<'a>(words: &[&'a str]) -> Vec<[&'a str; 5]> {
 
     let starting_cache = starting_letters_cache(&word_bytes);
 
-    let sols = find_solutions(starting_cache);
+    let sols = place_first_pair_of_words(&starting_cache);
     convert_sols(words, sols)
 }
 
@@ -264,6 +264,25 @@ fn find_solutions(cache: HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Grid> {
         "sent:\n{original_solution}but got back:\n{solution}"
     );
     solutions
+}
+
+fn place_first_pair_of_words(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Grid> {
+    cache
+        .get(&WordFrag::default())
+        .unwrap()
+        .iter()
+        .cartesian_product(cache.get(&WordFrag::default()).unwrap().iter())
+        .filter(|&(a, b): &(&Word, &Word)| (a > b) && (a[0] == b[0]))
+        .flat_map(|(a, b): (&Word, &Word)| {
+            let mut solution = Grid::default();
+            let mut placed_words = HashSet::new();
+            solution.place_row(*a, 0);
+            solution.place_col(*b, 0);
+            placed_words.insert(*a);
+            placed_words.insert(*b);
+            place_pair_of_words(cache, &mut placed_words, &mut solution, 1)
+        })
+        .collect_vec()
 }
 
 fn place_pair_of_words(
