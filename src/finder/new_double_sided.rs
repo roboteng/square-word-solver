@@ -5,6 +5,8 @@ use std::{
 
 use data::*;
 use itertools::Itertools;
+
+use crate::vec_set::VecSet;
 mod data {
     use std::{
         fmt::{Debug, Display},
@@ -278,7 +280,7 @@ fn place_first_pair_of_words(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Gr
         .into_par_iter()
         .flat_map(|(a, b): (Word, Word)| {
             let mut solution = Grid::default();
-            let mut placed_words = HashSet::new();
+            let mut placed_words = VecSet::new();
             solution.place_row(a, 0);
             solution.place_col(b, 0);
             placed_words.insert(a);
@@ -293,7 +295,7 @@ fn place_first_pair_of_words(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Gr
     first_pair(cache)
         .flat_map(|(a, b): (Word, Word)| {
             let mut solution = Grid::default();
-            let mut placed_words = HashSet::new();
+            let mut placed_words = VecSet::new();
             solution.place_row(a, 0);
             solution.place_col(b, 0);
             placed_words.insert(a);
@@ -305,7 +307,7 @@ fn place_first_pair_of_words(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Gr
 
 fn place_pair_of_words(
     cache: &HashMap<WordFrag<'_>, Vec<Word>>,
-    placed_words: &mut HashSet<Word>,
+    placed_words: &mut VecSet<Word>,
     solution: &mut Grid,
     index: usize,
 ) -> Vec<Grid> {
@@ -359,7 +361,7 @@ fn place_pair_of_words(
             let col = solution.word_at_col(i);
             cache.get(&to_slice(&col)).is_some()
         }) {
-            placed_words.remove(row_word);
+            placed_words.remove(*row_word);
             continue;
         }
 
@@ -384,7 +386,7 @@ fn place_pair_of_words(
                 let row = solution.word_at_row(i);
                 cache.get(&to_slice(&row)).is_some()
             }) {
-                placed_words.remove(col_word);
+                placed_words.remove(*col_word);
                 continue;
             }
 
@@ -397,9 +399,9 @@ fn place_pair_of_words(
 
             solutions.append(&mut new_solutions);
 
-            placed_words.remove(col_word);
+            placed_words.remove(*col_word);
         }
-        placed_words.remove(row_word);
+        placed_words.remove(*row_word);
         solution.remove_col(index);
     }
     solution.remove_row(index);
@@ -408,7 +410,7 @@ fn place_pair_of_words(
 
 fn place_last_letter(
     cache: &HashMap<WordFrag<'_>, Vec<Word>>,
-    placed_words: &HashSet<Word>,
+    placed_words: &VecSet<Word>,
     solution: &mut Grid,
 ) -> Vec<Grid> {
     let row = to_slice(&solution[4]);
@@ -424,15 +426,23 @@ fn place_last_letter(
         None => return Vec::new(),
     };
     let row_words_binding: HashSet<Word, _> = HashSet::from_iter(row_words.iter().copied());
-    let row_letters: HashSet<u8, RandomState> =
-        HashSet::from_iter(row_words_binding.difference(placed_words).map(|w| w[4]));
+    let hash_placed_words = HashSet::<_, RandomState>::from_iter(placed_words.clone());
+    let row_letters: HashSet<u8, RandomState> = HashSet::from_iter(
+        row_words_binding
+            .difference(&hash_placed_words)
+            .map(|w| w[4]),
+    );
 
     let col_words = match cache.get(&col) {
         Some(k) => k,
         None => return Vec::new(),
     };
     let col_words_binding = HashSet::from_iter(col_words.iter().copied());
-    let col_letters = HashSet::from_iter(col_words_binding.difference(placed_words).map(|w| w[4]));
+    let col_letters = HashSet::from_iter(
+        col_words_binding
+            .difference(&hash_placed_words)
+            .map(|w| w[4]),
+    );
 
     let letters = row_letters.intersection(&col_letters);
     // println!("Found letters {:?}", letters.clone().collect_vec());
