@@ -1,9 +1,10 @@
 use std::{
     collections::{HashMap, HashSet},
-    hash::RandomState,
+    hash::{BuildHasherDefault, RandomState},
 };
 
 use data::*;
+use fxhash::FxHasher;
 use itertools::Itertools;
 
 use crate::vec_set::VecSet;
@@ -18,7 +19,7 @@ mod data {
     pub struct Word([u8; 5]);
     #[derive(Clone, PartialEq, Eq, Default)]
     pub struct Grid([[u8; 5]; 5]);
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
     pub struct WordFrag<'a>(&'a [u8]);
 
     impl Grid {
@@ -216,6 +217,7 @@ mod data {
         }
     }
 }
+
 pub fn solutions<'a>(words: &[&'a str]) -> Vec<[&'a str; 5]> {
     let word_bytes = convert(words);
 
@@ -240,8 +242,10 @@ fn convert(words: &[&str]) -> Vec<Word> {
         .collect()
 }
 
-fn starting_letters_cache(words: &[Word]) -> HashMap<WordFrag<'_>, Vec<Word>> {
-    let mut cache = HashMap::<WordFrag<'_>, Vec<Word>>::new();
+type Cache<'a> = HashMap<WordFrag<'a>, Vec<Word>, BuildHasherDefault<FxHasher>>;
+
+fn starting_letters_cache(words: &[Word]) -> Cache<'_> {
+    let mut cache = Cache::<'_>::with_hasher(BuildHasherDefault::<FxHasher>::default());
     cache.insert(WordFrag::new(&[]), words.to_vec());
     for word in words {
         for i in 1..=5 {
@@ -255,7 +259,7 @@ fn starting_letters_cache(words: &[Word]) -> HashMap<WordFrag<'_>, Vec<Word>> {
     cache
 }
 
-fn first_pair(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> impl Iterator<Item = (Word, Word)> {
+fn first_pair(cache: &Cache<'_>) -> impl Iterator<Item = (Word, Word)> {
     cache
         .get(&WordFrag::default())
         .unwrap()
@@ -271,7 +275,7 @@ fn first_pair(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> impl Iterator<Item = 
 }
 
 #[cfg(feature = "multi-thread")]
-fn place_first_pair_of_words(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Grid> {
+fn place_first_pair_of_words(cache: &Cache<'_>) -> Vec<Grid> {
     use rayon::iter::IntoParallelIterator;
     use rayon::iter::ParallelIterator;
 
@@ -291,7 +295,7 @@ fn place_first_pair_of_words(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Gr
 }
 
 #[cfg(not(feature = "multi-thread"))]
-fn place_first_pair_of_words(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Grid> {
+fn place_first_pair_of_words(cache: &Cache<'_>) -> Vec<Grid> {
     first_pair(cache)
         .flat_map(|(a, b): (Word, Word)| {
             let mut solution = Grid::default();
@@ -306,7 +310,7 @@ fn place_first_pair_of_words(cache: &HashMap<WordFrag<'_>, Vec<Word>>) -> Vec<Gr
 }
 
 fn place_pair_of_words(
-    cache: &HashMap<WordFrag<'_>, Vec<Word>>,
+    cache: &Cache<'_>,
     placed_words: &mut VecSet<Word>,
     solution: &mut Grid,
     index: usize,
@@ -409,7 +413,7 @@ fn place_pair_of_words(
 }
 
 fn place_last_letter(
-    cache: &HashMap<WordFrag<'_>, Vec<Word>>,
+    cache: &Cache<'_>,
     placed_words: &VecSet<Word>,
     solution: &mut Grid,
 ) -> Vec<Grid> {
@@ -457,7 +461,7 @@ fn place_last_letter(
     solutions
 }
 
-fn are_cols_valid(cache: &HashMap<WordFrag<'_>, Vec<Word>>, solution: &Grid) -> bool {
+fn are_cols_valid(cache: &Cache<'_>, solution: &Grid) -> bool {
     for i in 0..5 {
         let col = col_index(solution, i);
         let col = to_slice(&col);
