@@ -13,6 +13,7 @@ mod builder;
 pub mod finder;
 pub mod first_guess;
 pub mod solver;
+mod vec_set;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Word([AsciiChar; 5]);
