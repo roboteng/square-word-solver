@@ -1,4 +1,4 @@
-use std::env::args;
+use std::{env::args, sync::Mutex};
 
 use square_word::*;
 
@@ -10,8 +10,11 @@ fn main() {
         .unwrap_or(valid_words.len());
     let valid_words: Vec<&str> = valid_words.iter().take(n).map(|s| s.as_str()).collect();
 
-    let sols = crate::finder::new_double_sided::solutions(&valid_words);
-    for sol in sols {
-        println!("{}", sol.join(","));
-    }
+    let i = Mutex::new(0);
+    crate::finder::new_double_sided::solutions_cb(&valid_words, |_g| {
+        // println!("{}", g.join(","));
+        let mut k = i.lock().unwrap();
+        *k += 1;
+    });
+    println!("{}", i.lock().unwrap());
 }

@@ -1,6 +1,8 @@
 use std::{
     collections::{HashMap, HashSet},
     hash::{BuildHasherDefault, RandomState},
+    ops::Deref,
+    sync::Mutex,
 };
 
 use data::*;
@@ -219,12 +221,25 @@ mod data {
 }
 
 pub fn solutions<'a>(words: &[&'a str]) -> Vec<[&'a str; 5]> {
+    let solutions = Mutex::new(Vec::new());
+    solutions_cb(words, |s| {
+        let mut guard = solutions.lock().unwrap();
+        guard.push(s);
+    });
+    let mut sols = Vec::new();
+    sols.clone_from(solutions.lock().unwrap().deref());
+    sols
+}
+
+pub fn solutions_cb<'a, F: Fn([&'a str; 5]) + Send + Sync>(words: &[&'a str], on_find: F) {
     let word_bytes = convert(words);
 
     let starting_cache = starting_letters_cache(&word_bytes);
 
-    let sols = place_first_pair_of_words(&starting_cache);
-    convert_sols(words, sols)
+    let pairs: HashMap<WordFrag<'a>, &&str, RandomState> =
+        HashMap::from_iter(words.iter().map(|w| (WordFrag::new(w.as_bytes()), w)));
+    let cb = |grid: Grid| on_find(grid.map(|a| *pairs[&WordFrag::new(a.as_slice())]));
+    place_first_pair_of_words(&starting_cache, &cb);
 }
 
 fn convert_sols<'a>(words: &[&'a str], sols: Vec<Grid>) -> Vec<[&'a str; 5]> {
@@ -275,46 +290,44 @@ fn first_pair(cache: &Cache<'_>) -> impl Iterator<Item = (Word, Word)> {
 }
 
 #[cfg(feature = "multi-thread")]
-fn place_first_pair_of_words(cache: &Cache<'_>) -> Vec<Grid> {
+fn place_first_pair_of_words<F: Fn(Grid) + Send + Sync>(cache: &Cache<'_>, on_find: &F) {
     use rayon::iter::IntoParallelIterator;
     use rayon::iter::ParallelIterator;
 
     first_pair(cache)
         .collect_vec()
         .into_par_iter()
-        .flat_map(|(a, b): (Word, Word)| {
+        .for_each(|(a, b): (Word, Word)| {
             let mut solution = Grid::default();
             let mut placed_words = VecSet::new();
             solution.place_row(a, 0);
             solution.place_col(b, 0);
             placed_words.insert(a);
             placed_words.insert(b);
-            place_pair_of_words(cache, &mut placed_words, &mut solution, 1)
+            place_pair_of_words(cache, &mut placed_words, &mut solution, 1, on_find)
         })
-        .collect()
 }
 
 #[cfg(not(feature = "multi-thread"))]
-fn place_first_pair_of_words(cache: &Cache<'_>) -> Vec<Grid> {
-    first_pair(cache)
-        .flat_map(|(a, b): (Word, Word)| {
-            let mut solution = Grid::default();
-            let mut placed_words = VecSet::new();
-            solution.place_row(a, 0);
-            solution.place_col(b, 0);
-            placed_words.insert(a);
-            placed_words.insert(b);
-            place_pair_of_words(cache, &mut placed_words, &mut solution, 1)
-        })
-        .collect()
+fn place_first_pair_of_words<F: Fn(Grid)>(cache: &Cache<'_>, on_find: &F) {
+    first_pair(cache).for_each(|(a, b): (Word, Word)| {
+        let mut solution = Grid::default();
+        let mut placed_words = VecSet::new();
+        solution.place_row(a, 0);
+        solution.place_col(b, 0);
+        placed_words.insert(a);
+        placed_words.insert(b);
+        place_pair_of_words(cache, &mut placed_words, &mut solution, 1, on_find)
+    })
 }
 
-fn place_pair_of_words(
+fn place_pair_of_words<F: Fn(Grid)>(
     cache: &Cache<'_>,
     placed_words: &mut VecSet<Word>,
     solution: &mut Grid,
     index: usize,
-) -> Vec<Grid> {
+    on_find: &F,
+) {
     assert!(index < 5);
     for x in index..5 {
         for y in index..5 {
@@ -336,12 +349,12 @@ fn place_pair_of_words(
 
     if index == 4 {
         let original_solution = solution.clone();
-        let solutions = place_last_letter(cache, placed_words, solution);
+        place_last_letter(cache, placed_words, solution, on_find);
         debug_assert_eq!(
             original_solution, *solution,
             "sent:\n{original_solution}but got back:\n{solution}"
         );
-        return solutions;
+        return;
     }
 
     // println!("Starting at {index} with:\n{solution}\n-----");
@@ -349,10 +362,9 @@ fn place_pair_of_words(
     let current_row = to_slice(&binding);
     let words = match cache.get(&current_row) {
         Some(w) => w,
-        None => return Vec::new(),
+        None => return,
     };
 
-    let mut solutions = Vec::new();
     for row_word in words {
         if placed_words.contains(row_word) {
             // println!("Solution already contains {word}");
@@ -395,13 +407,11 @@ fn place_pair_of_words(
             }
 
             let original_solution = solution.clone();
-            let mut new_solutions = place_pair_of_words(cache, placed_words, solution, index + 1);
+            place_pair_of_words(cache, placed_words, solution, index + 1, on_find);
             debug_assert_eq!(
                 original_solution, *solution,
                 "sent:\n{original_solution}but got back:\n{solution}"
             );
-
-            solutions.append(&mut new_solutions);
 
             placed_words.remove(*col_word);
         }
@@ -409,25 +419,25 @@ fn place_pair_of_words(
         solution.remove_col(index);
     }
     solution.remove_row(index);
-    solutions
 }
 
-fn place_last_letter(
+fn place_last_letter<F: Fn(Grid)>(
     cache: &Cache<'_>,
     placed_words: &VecSet<Word>,
     solution: &mut Grid,
-) -> Vec<Grid> {
+    on_find: &F,
+) {
     let row = to_slice(&solution[4]);
     let col_word = solution.word_at_col(4);
     let col = to_slice(&col_word);
 
     if row == col {
-        return Vec::new();
+        return;
     }
 
     let row_words = match cache.get(&row) {
         Some(v) => v,
-        None => return Vec::new(),
+        None => return,
     };
     let row_words_binding: HashSet<Word, _> = HashSet::from_iter(row_words.iter().copied());
     let hash_placed_words = HashSet::<_, RandomState>::from_iter(placed_words.clone());
@@ -439,7 +449,7 @@ fn place_last_letter(
 
     let col_words = match cache.get(&col) {
         Some(k) => k,
-        None => return Vec::new(),
+        None => return,
     };
     let col_words_binding = HashSet::from_iter(col_words.iter().copied());
     let col_letters = HashSet::from_iter(
@@ -450,15 +460,12 @@ fn place_last_letter(
 
     let letters = row_letters.intersection(&col_letters);
     // println!("Found letters {:?}", letters.clone().collect_vec());
-    let mut solutions = Vec::new();
     for letter in letters {
         solution[4][4] = *letter;
-        solutions.push(solution.clone());
-        solutions.push(solution.transpose());
+        on_find(solution.clone());
+        on_find(solution.transpose());
     }
     solution[4][4] = 0;
-
-    solutions
 }
 
 fn are_cols_valid(cache: &Cache<'_>, solution: &Grid) -> bool {
@@ -598,9 +605,7 @@ mod tests {
             "grime", "honor", "outdo", "steed", "terse", "ghost", "route", "inter", "modes",
             "erode",
         ];
-        let words_ = convert(words.as_slice());
-        let cache = starting_letters_cache(&words_);
-        let solutions = place_first_pair_of_words(&cache);
+        let solutions = solutions(&words);
         assert_eq!(solutions.len(), 2);
     }
 

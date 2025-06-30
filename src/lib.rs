@@ -149,7 +149,7 @@ impl<'a> RangeFinder<'a> for LinearSearchRange<'a> {
 }
 
 pub fn get_words() -> Result<Vec<String>, io::Error> {
-    let path = Path::new("words.txt");
+    let path = Path::new("new_words.txt");
     let mut file = File::open(path)?;
 
     let mut buffer = String::new();
