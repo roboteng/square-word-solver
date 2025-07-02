@@ -1,11 +1,11 @@
-use ascii::AsciiString;
-use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
-use square_word::{
-    first_guess::{distrobution_for, entropy},
-    Solution,
-};
-
+#[cfg(feature = "multi-thread")]
 fn main() {
+    use ascii::AsciiString;
+    use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
+    use square_word::{
+        Solution,
+        first_guess::{distrobution_for, entropy},
+    };
     let lines = include_str!("../../solutions.txt");
     let solutions = lines
         .lines()
@@ -34,4 +34,9 @@ fn main() {
 
     scores.sort_by(|&a, b| a.1.partial_cmp(&b.1).unwrap());
     println!("{scores:?}");
+}
+
+#[cfg(not(feature = "multi-thread"))]
+fn main() {
+    panic!("This must be run with the \"multi-thread\" feature");
 }

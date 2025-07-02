@@ -1,5 +1,3 @@
-use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-
 use crate::AddedWord;
 use crate::{Solution, SolutionFinder, WordList, builder::SolutionBuilder};
 
@@ -21,10 +19,13 @@ impl<'a> SolutionFinder<'a> for TopDownFinder<'a> {
     }
 }
 
+#[cfg(feature = "multi-thread")]
 pub fn find_solutions_new<'a>(
     possible_columns: &WordList,
     possible_rows: &'a Vec<&'a str>,
 ) -> Vec<Solution> {
+    use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+
     possible_rows
         .par_iter()
         .filter_map(|word| {
@@ -32,6 +33,23 @@ pub fn find_solutions_new<'a>(
             builder.add(word).ok()?;
             let sols = find_subsolutions(possible_rows, &mut builder);
             Some(sols.into_par_iter())
+        })
+        .flatten()
+        .collect()
+}
+
+#[cfg(not(feature = "multi-thread"))]
+pub fn find_solutions_new<'a>(
+    possible_columns: &WordList,
+    possible_rows: &'a Vec<&'a str>,
+) -> Vec<Solution> {
+    possible_rows
+        .iter()
+        .filter_map(|word| {
+            let mut builder = SolutionBuilder::new(possible_columns);
+            builder.add(word).ok()?;
+            let sols = find_subsolutions(possible_rows, &mut builder);
+            Some(sols)
         })
         .flatten()
         .collect()

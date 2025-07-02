@@ -291,12 +291,14 @@ fn first_pair(cache: &Cache<'_>) -> impl Iterator<Item = (Word, Word)> {
 
 #[cfg(feature = "multi-thread")]
 fn place_first_pair_of_words<F: Fn(Grid) + Send + Sync>(cache: &Cache<'_>, on_find: &F) {
+    use indicatif::ParallelProgressIterator;
     use rayon::iter::IntoParallelIterator;
     use rayon::iter::ParallelIterator;
 
     first_pair(cache)
         .collect_vec()
         .into_par_iter()
+        .progress()
         .for_each(|(a, b): (Word, Word)| {
             let mut solution = Grid::default();
             let mut placed_words = VecSet::new();
@@ -310,15 +312,27 @@ fn place_first_pair_of_words<F: Fn(Grid) + Send + Sync>(cache: &Cache<'_>, on_fi
 
 #[cfg(not(feature = "multi-thread"))]
 fn place_first_pair_of_words<F: Fn(Grid)>(cache: &Cache<'_>, on_find: &F) {
-    first_pair(cache).for_each(|(a, b): (Word, Word)| {
-        let mut solution = Grid::default();
-        let mut placed_words = VecSet::new();
-        solution.place_row(a, 0);
-        solution.place_col(b, 0);
-        placed_words.insert(a);
-        placed_words.insert(b);
-        place_pair_of_words(cache, &mut placed_words, &mut solution, 1, on_find)
-    })
+    use indicatif::ProgressIterator;
+
+    first_pair(cache)
+        .progress_count(
+            cache
+                .get(&WordFrag::default())
+                .unwrap()
+                .len()
+                .pow(2)
+                .try_into()
+                .unwrap(),
+        )
+        .for_each(|(a, b): (Word, Word)| {
+            let mut solution = Grid::default();
+            let mut placed_words = VecSet::new();
+            solution.place_row(a, 0);
+            solution.place_col(b, 0);
+            placed_words.insert(a);
+            placed_words.insert(b);
+            place_pair_of_words(cache, &mut placed_words, &mut solution, 1, on_find)
+        })
 }
 
 fn place_pair_of_words<F: Fn(Grid)>(

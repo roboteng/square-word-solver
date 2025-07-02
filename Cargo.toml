@@ -5,16 +5,18 @@ edition = "2024"
 
 [features]
 default = []
-multi-thread = []
+multi-thread = ["rayon", "indicatif/rayon"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+indicatif = { version = "0.17.12" }
+
 regex = "1"
 num_cpus = "1.0"
 ascii = "1.1.0"
 itertools = "0.10.5"
-rayon = "1.6.1"
+rayon = { version = "1.6.1", optional = true }
 fxhash = "0.2.1"
 
 [dev-dependencies]
